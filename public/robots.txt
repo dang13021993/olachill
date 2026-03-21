@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tikdown1.com/sitemap.xml

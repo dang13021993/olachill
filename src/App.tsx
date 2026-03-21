@@ -1,0 +1,2305 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Compass, 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  Star, 
+  ArrowRight, 
+  Loader2, 
+  ChevronRight, 
+  Info, 
+  CheckCircle2, 
+  X,
+  Send,
+  Search,
+  User,
+  Bot,
+  MessageSquare,
+  AlertCircle,
+  Hotel,
+  Ticket,
+  Car,
+  Camera,
+  ExternalLink,
+  Map as MapIcon,
+  Sun,
+  Moon,
+  Save,
+  Folder,
+  Trash2,
+  History,
+  Plus,
+  Music,
+  PartyPopper
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import { generateTravelPlan, getPlaceInfo, TravelPlan } from './services/travelService';
+import { auth, loginWithGoogle, logout, db } from './firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+
+// Remove Google Maps imports
+// import { APIProvider } from '@vis.gl/react-google-maps';
+// import { NearbySearch } from './components/NearbySearch';
+
+// const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || '';
+// const hasValidKey = Boolean(GOOGLE_MAPS_API_KEY) && GOOGLE_MAPS_API_KEY !== 'YOUR_API_KEY';
+
+import { GoogleGenAI, Type } from "@google/genai";
+import { translations, Language, SuggestedTopic } from './translations';
+
+// --- Types ---
+
+interface Message {
+  id: string;
+  type: 'user' | 'ai' | 'loading' | 'error';
+  content?: string;
+  plan?: TravelPlan;
+  streamingText?: string;
+  timestamp: Date;
+}
+
+interface SavedSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  timestamp: number;
+}
+
+// --- Components ---
+
+const SplashScreen = ({ language }: { language: Language }) => (
+  <div className="fixed inset-0 bg-white dark:bg-stone-950 z-[200] flex flex-col items-center justify-center p-6 text-center">
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="w-24 h-24 bg-stone-900 dark:bg-stone-100 rounded-[32px] flex items-center justify-center mb-8 shadow-2xl"
+    >
+      <Compass className="text-white dark:text-stone-900 w-12 h-12 animate-pulse" />
+    </motion.div>
+    <h1 className="text-4xl font-serif italic mb-4 dark:text-white">{translations[language].appName}</h1>
+    <p className="text-stone-400 dark:text-stone-500 max-w-xs leading-relaxed">
+      {translations[language].splashMessage}
+    </p>
+  </div>
+);
+
+const ErrorBoundary = ({ children, language }: { children: React.ReactNode, language: Language }) => {
+  const [hasError, setHasError] = useState(false);
+  const t = translations[language] || translations['vi'];
+
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      console.error("Caught by boundary:", error);
+      setHasError(true);
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <div className="max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
+          <h2 className="text-2xl font-serif mb-4">{t.errorOccurred}</h2>
+          <p className="text-stone-500 mb-8">{t.errorUnexpected}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-stone-900 text-white px-8 py-3 rounded-2xl hover:bg-stone-800 transition-colors"
+          >
+            {t.reloadPage}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+
+
+// --- Services ---
+
+const searchTransit = async (from: string, to: string, date: string, time: string, language: Language) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const prompt = `Find train routes from ${from} to ${to} on ${date} at around ${time}. 
+  Provide 3 best options with: type (e.g. Shinkansen, JR), duration, price (in JPY), departure time, arrival time, and number of changes.
+  Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING },
+            time: { type: Type.STRING, description: "Duration e.g. 2h 15m" },
+            price: { type: Type.STRING, description: "Price e.g. 13,910 JPY" },
+            departure: { type: Type.STRING, description: "Departure time e.g. 09:00" },
+            arrival: { type: Type.STRING, description: "Arrival time e.g. 11:15" },
+            changes: { type: Type.STRING, description: "Number of changes" }
+          },
+          required: ["type", "time", "price", "departure", "arrival", "changes"]
+        }
+      }
+    }
+  });
+
+  try {
+    return JSON.parse(response.text);
+  } catch (e) {
+    console.error("Error parsing transit results:", e);
+    return [];
+  }
+};
+
+// --- Components ---
+
+const JAPAN_STATIONS_BY_CITY: Record<string, string[]> = {
+  'Tokyo': ['Tokyo', 'Shinjuku', 'Shibuya', 'Ueno', 'Shinagawa', 'Ikebukuro', 'Akihabara', 'Asakusa', 'Ginza', 'Roppongi', 'Harajuku', 'Omotesando', 'Ebisu', 'Nakano', 'Kichijoji', 'Shimokitazawa', 'Hachioji', 'Tachikawa'],
+  'Osaka': ['Osaka', 'Shin-Osaka', 'Namba', 'Umeda', 'Tennoji', 'Kyobashi', 'Yodoyabashi', 'Shinsaibashi', 'Nipponbashi'],
+  'Kyoto': ['Kyoto', 'Gion-Shijo', 'Kawaramachi', 'Arashiyama', 'Fushimi-Inari', 'Kiyomizu-Gojo'],
+  'Nagoya': ['Nagoya', 'Kanayama', 'Sakae', 'Osu Kannon', 'Nagoya-ko', 'Fujigaoka'],
+  'Yokohama': ['Yokohama', 'Sakuragicho', 'Minato Mirai', 'Shin-Yokohama', 'Motomachi-Chukagai'],
+  'Fukuoka': ['Hakata', 'Tenjin', 'Nakasu-Kawabata', 'Fukuoka Airport'],
+  'Sapporo': ['Sapporo', 'Odori', 'Susukino'],
+  'Hiroshima': ['Hiroshima', 'Miyajimaguchi', 'Hatchobori'],
+  'Nara': ['Nara', 'Kintetsu-Nara'],
+  'Kobe': ['Sannomiya', 'Kobe', 'Motomachi', 'Shin-Kobe'],
+  'Hakone': ['Hakone-Yumoto', 'Gora', 'Togendai'],
+  'Nikko': ['Nikko', 'Tobu-Nikko'],
+  'Kamakura': ['Kamakura', 'Hase', 'Kita-Kamakura'],
+  'Kawaguchiko': ['Kawaguchiko', 'Fujisan']
+};
+
+const ALL_STATIONS = Array.from(new Set([
+  ...Object.keys(JAPAN_STATIONS_BY_CITY),
+  ...Object.values(JAPAN_STATIONS_BY_CITY).flat()
+]));
+
+const TrainSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
+  const t = translations[language];
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState('09:00');
+  const [showResults, setShowResults] = useState(false);
+  const [fromSuggestions, setFromSuggestions] = useState<string[]>([]);
+  const [toSuggestions, setToSuggestions] = useState<string[]>([]);
+  const [results, setResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const getSuggestions = (val: string) => {
+    if (val.length === 0) return [];
+    
+    const searchVal = val.toLowerCase();
+    
+    // 1. Check if it's a city name
+    const matchingCity = Object.keys(JAPAN_STATIONS_BY_CITY).find(city => city.toLowerCase() === searchVal);
+    if (matchingCity) {
+      return JAPAN_STATIONS_BY_CITY[matchingCity];
+    }
+    
+    // 2. Otherwise, filter all stations and cities
+    return ALL_STATIONS.filter(s => s.toLowerCase().includes(searchVal)).slice(0, 8);
+  };
+
+  const handleFromChange = (val: string) => {
+    setFrom(val);
+    setFromSuggestions(getSuggestions(val));
+  };
+
+  const handleToChange = (val: string) => {
+    setTo(val);
+    setToSuggestions(getSuggestions(val));
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!from || !to) return;
+    
+    setSearching(true);
+    const transitResults = await searchTransit(from, to, date, time, language);
+    setResults(transitResults);
+    setSearching(false);
+    setShowResults(true);
+  };
+
+  const mockResults = [
+    { type: 'Shinkansen Nozomi', time: '2h 15m', price: '13,910 JPY', departure: '09:00', arrival: '11:15', changes: '0' },
+    { type: 'Shinkansen Hikari', time: '2h 40m', price: '13,600 JPY', departure: '09:12', arrival: '11:52', changes: '0' },
+    { type: 'JR Special Rapid', time: '8h 30m', price: '8,360 JPY', departure: '08:00', arrival: '16:30', changes: '3' },
+  ];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <Plus size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-serif dark:text-white">{t.trainSearchTitle}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.trainSearchSubtitle}</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+          <X size={20} className="text-stone-400" />
+        </button>
+      </div>
+
+      {!showResults ? (
+        <form onSubmit={handleSearch} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 ml-1">{t.from}</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 w-4 h-4" />
+                <input 
+                  type="text" 
+                  value={from}
+                  onChange={(e) => handleFromChange(e.target.value)}
+                  placeholder={t.fromPlaceholder}
+                  className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-blue-500/20 text-stone-900 dark:text-white"
+                />
+              </div>
+              {fromSuggestions.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl shadow-xl overflow-hidden">
+                  {fromSuggestions.map(s => (
+                    <button 
+                      key={s}
+                      type="button"
+                      onClick={() => { setFrom(s); setFromSuggestions([]); }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 ml-1">{t.to}</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 w-4 h-4" />
+                <input 
+                  type="text" 
+                  value={to}
+                  onChange={(e) => handleToChange(e.target.value)}
+                  placeholder={t.toPlaceholder}
+                  className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-blue-500/20 text-stone-900 dark:text-white"
+                />
+              </div>
+              {toSuggestions.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-xl shadow-xl overflow-hidden">
+                  {toSuggestions.map(s => (
+                    <button 
+                      key={s}
+                      type="button"
+                      onClick={() => { setTo(s); setToSuggestions([]); }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 ml-1">{t.date}</label>
+              <input 
+                type="date" 
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-blue-500/20 text-stone-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-stone-500 dark:text-stone-400 ml-1">{t.time}</label>
+              <input 
+                type="time" 
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-blue-500/20 text-stone-900 dark:text-white"
+              />
+            </div>
+          </div>
+          <button 
+            type="submit"
+            disabled={searching}
+            className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-base hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all mt-4 flex items-center justify-center gap-2"
+          >
+            {searching ? <Loader2 className="animate-spin" /> : null}
+            {t.searchRoute}
+          </button>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between mb-4 px-2">
+            <p className="text-sm font-medium text-stone-500">{t.resultsFor}: <span className="text-stone-900 dark:text-white font-bold">{from} → {to}</span></p>
+            <button onClick={() => setShowResults(false)} className="text-xs text-blue-600 font-bold hover:underline">{t.changeSearch}</button>
+          </div>
+          {results.length > 0 ? results.map((res, i) => (
+            <div key={i} className="bg-stone-50 dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 hover:border-blue-500/30 transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-bold px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md">{res.type}</span>
+                <span className="text-lg font-mono font-bold text-stone-900 dark:text-white">{res.price}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-stone-900 dark:text-white">{res.departure}</p>
+                  <p className="text-[10px] text-stone-400 uppercase font-bold">{from}</p>
+                </div>
+                <div className="flex-1 flex flex-col items-center gap-1">
+                  <p className="text-[10px] text-stone-400 font-medium">{res.time}</p>
+                  <div className="w-full h-px bg-stone-200 dark:bg-stone-700 relative">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-stone-300" />
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-stone-300" />
+                  </div>
+                  <p className="text-[10px] text-stone-400 font-medium">{res.changes} {t.transfers}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-stone-900 dark:text-white">{res.arrival}</p>
+                  <p className="text-[10px] text-stone-400 uppercase font-bold">{to}</p>
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div className="text-center py-10">
+              <p className="text-stone-400 italic">{t.noResultsFound}</p>
+            </div>
+          )}
+          <p className="text-[9px] text-stone-400 text-center italic mt-6">{t.aiDataNote}</p>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+const CafeSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
+  const t = translations[language];
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `Find best cafes and restaurants in Japan for: ${query}. 
+      Provide 5 recommendations with: name, type, priceRange (e.g. $, $$, $$$), description, and location.
+      Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                type: { type: Type.STRING },
+                priceRange: { type: Type.STRING },
+                description: { type: Type.STRING },
+                location: { type: Type.STRING }
+              },
+              required: ["name", "type", "priceRange", "description", "location"]
+            }
+          }
+        }
+      });
+      setResults(JSON.parse(response.text));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center text-orange-600 dark:text-orange-400">
+            <Music size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-serif dark:text-white">{t.cafeSearchTitle}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.cafeSearchSubtitle}</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+          <X size={20} className="text-stone-400" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSearch} className="relative mb-8">
+        <input 
+          type="text" 
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.cafePlaceholder}
+          className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500/20 text-stone-900 dark:text-white"
+        />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 w-4 h-4" />
+        <button 
+          disabled={loading}
+          className="absolute right-2 top-2 bottom-2 bg-orange-600 text-white px-4 rounded-xl text-xs font-bold hover:bg-orange-700 transition-colors disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="animate-spin w-4 h-4" /> : t.searchRoute}
+        </button>
+      </form>
+
+      <div className="flex flex-wrap gap-2 mb-8">
+        {['Sushi', 'Ramen', 'Cafe', 'Matcha', 'Izakaya', 'Wagyu'].map(cat => (
+          <button 
+            key={cat}
+            onClick={() => { setQuery(cat); }}
+            className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 rounded-lg text-[10px] font-bold text-stone-500 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        {results.map((res, i) => (
+          <div key={i} className="bg-stone-50 dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700">
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-bold text-stone-900 dark:text-white">{res.name}</h4>
+              <span className="text-xs font-bold text-orange-600 dark:text-orange-400">{res.priceRange}</span>
+            </div>
+            <p className="text-[10px] text-stone-400 uppercase font-bold mb-2">{res.type} • {res.location}</p>
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">{res.description}</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+const SecondHandSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
+  const t = translations[language];
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `Find best second-hand shops or areas in Japan for: ${query}. 
+      Provide 5 recommendations with: name, type (e.g. Hard Off, Book Off, local area), description, and location.
+      Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                type: { type: Type.STRING },
+                description: { type: Type.STRING },
+                location: { type: Type.STRING }
+              },
+              required: ["name", "type", "description", "location"]
+            }
+          }
+        }
+      });
+      setResults(JSON.parse(response.text));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400">
+            <Plus size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-serif dark:text-white">{t.secondHandTitle}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.secondHandSubtitle}</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+          <X size={20} className="text-stone-400" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSearch} className="relative mb-8">
+        <input 
+          type="text" 
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.secondHandPlaceholder}
+          className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-purple-500/20 text-stone-900 dark:text-white"
+        />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 w-4 h-4" />
+        <button 
+          disabled={loading}
+          className="absolute right-2 top-2 bottom-2 bg-purple-600 text-white px-4 rounded-xl text-xs font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="animate-spin w-4 h-4" /> : t.searchRoute}
+        </button>
+      </form>
+
+      <div className="flex flex-wrap gap-2 mb-8">
+        {['Camera', 'Electronics', 'Fashion', 'Anime Figure', 'Luxury Bag', 'Instrument'].map(cat => (
+          <button 
+            key={cat}
+            onClick={() => { setQuery(cat); }}
+            className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 rounded-lg text-[10px] font-bold text-stone-500 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        {results.map((res, i) => (
+          <div key={i} className="bg-stone-50 dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700">
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-bold text-stone-900 dark:text-white">{res.name}</h4>
+              <span className="text-[10px] font-bold px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-md">{res.type}</span>
+            </div>
+            <p className="text-[10px] text-stone-400 uppercase font-bold mb-2">{res.location}</p>
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">{res.description}</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+const Personalization = ({ onClose, language, user, currentPrefs }: { onClose: () => void, language: Language, user: FirebaseUser | null, currentPrefs: any }) => {
+  const t = translations[language].personalization;
+  const [budget, setBudget] = useState(currentPrefs?.budget || 'medium');
+  const [travelStyle, setTravelStyle] = useState(currentPrefs?.travelStyle || 'balanced');
+  const [interests, setInterests] = useState<string[]>(currentPrefs?.interests || []);
+  const [dietary, setDietary] = useState(currentPrefs?.dietary || 'none');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'preferences', 'main'), {
+        uid: user.uid,
+        budget,
+        travelStyle,
+        interests,
+        dietary,
+        updatedAt: serverTimestamp()
+      });
+      alert(t.preferencesSaved);
+      onClose();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleInterest = (interest: string) => {
+    setInterests(prev => 
+      prev.includes(interest) ? prev.filter(i => i !== interest) : [...prev, interest]
+    );
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <User size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-serif dark:text-white">{t.title}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.subtitle}</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+          <X size={20} className="text-stone-400" />
+        </button>
+      </div>
+
+      <div className="space-y-8">
+        <div className="space-y-4">
+          <label className="text-sm font-bold text-stone-700 dark:text-stone-300">{t.budget}</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { id: 'low', label: t.budgetLow },
+              { id: 'medium', label: t.budgetMedium },
+              { id: 'high', label: t.budgetHigh }
+            ].map(b => (
+              <button 
+                key={b.id}
+                onClick={() => setBudget(b.id)}
+                className={`py-3 rounded-xl text-xs font-bold transition-all border ${
+                  budget === b.id 
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/20' 
+                    : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="text-sm font-bold text-stone-700 dark:text-stone-300">{t.travelStyle}</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { id: 'relaxed', label: t.styleRelaxed },
+              { id: 'balanced', label: t.styleBalanced },
+              { id: 'active', label: t.styleActive }
+            ].map(s => (
+              <button 
+                key={s.id}
+                onClick={() => setTravelStyle(s.id)}
+                className={`py-3 rounded-xl text-xs font-bold transition-all border ${
+                  travelStyle === s.id 
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/20' 
+                    : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="text-sm font-bold text-stone-700 dark:text-stone-300">{t.interests}</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'culture', label: t.interestCulture },
+              { id: 'food', label: t.interestFood },
+              { id: 'nature', label: t.interestNature },
+              { id: 'shopping', label: t.interestShopping },
+              { id: 'anime', label: t.interestAnime },
+              { id: 'nightlife', label: t.interestNightlife }
+            ].map(i => (
+              <button 
+                key={i.id}
+                onClick={() => toggleInterest(i.id)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
+                  interests.includes(i.id) 
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/20' 
+                    : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                {i.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="text-sm font-bold text-stone-700 dark:text-stone-300">{t.dietary}</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { id: 'none', label: t.dietNone },
+              { id: 'vegetarian', label: t.dietVegetarian },
+              { id: 'halal', label: t.dietHalal },
+              { id: 'gluten-free', label: t.dietGlutenFree }
+            ].map(d => (
+              <button 
+                key={d.id}
+                onClick={() => setDietary(d.id)}
+                className={`py-3 rounded-xl text-xs font-bold transition-all border ${
+                  dietary === d.id 
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/20' 
+                    : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          disabled={saving || !user}
+          className="w-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 py-5 rounded-2xl font-bold text-base hover:bg-stone-800 dark:hover:bg-stone-200 transition-all mt-4 flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="animate-spin" /> : null}
+          {t.savePreferences}
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+const TicketSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
+  const t = translations[language];
+  const categories = [t.categories.all, t.categories.themePark, t.categories.museum, t.categories.observatory, t.categories.experience];
+  const [activeCat, setActiveCat] = useState(t.categories.all);
+
+  const tickets = [
+    { 
+      name: 'Tokyo Disneyland', 
+      price: '8,400 JPY', 
+      icon: '🎡', 
+      cat: t.categories.themePark, 
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/disney/400/250',
+      url: 'https://www.tokyodisneyresort.jp/en/tdl/ticket/'
+    },
+    { 
+      name: 'Universal Studios Japan', 
+      price: '8,600 JPY', 
+      icon: '🎢', 
+      cat: t.categories.themePark, 
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/usj/400/250',
+      url: 'https://www.usj.co.jp/web/en/us/tickets'
+    },
+    { 
+      name: 'TeamLab Borderless', 
+      price: '3,800 JPY', 
+      icon: '💡', 
+      cat: t.categories.museum, 
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/teamlab/400/250',
+      url: 'https://www.teamlab.art/e/borderless-azabudai/'
+    },
+    { 
+      name: 'Shibuya Sky', 
+      price: '2,200 JPY', 
+      icon: '🏙️', 
+      cat: t.categories.observatory, 
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/shibuya/400/250',
+      url: 'https://www.shibuya-scramble-square.com/sky/ticket/en/'
+    },
+    { 
+      name: 'Ghibli Museum', 
+      price: '1,000 JPY', 
+      icon: '🌳', 
+      cat: t.categories.museum, 
+      rating: 5.0,
+      image: 'https://picsum.photos/seed/ghibli/400/250',
+      url: 'https://www.ghibli-museum.jp/en/tickets/'
+    },
+    { 
+      name: 'Tokyo Skytree', 
+      price: '3,100 JPY', 
+      icon: '🗼', 
+      cat: t.categories.observatory, 
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/skytree/400/250',
+      url: 'https://www.tokyo-skytree.jp/en/ticket/'
+    },
+    { 
+      name: 'Kyoto Kimono Rental', 
+      price: '3,500 JPY', 
+      icon: '👘', 
+      cat: t.categories.experience, 
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/kimono/400/250',
+      url: 'https://www.yumeyakata.com/english/'
+    },
+    { 
+      name: 'Nara Deer Park Tour', 
+      price: '5,000 JPY', 
+      icon: '🦌', 
+      cat: t.categories.experience, 
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/nara/400/250',
+      url: 'https://www.visitnara.jp/'
+    }
+  ];
+
+  const filtered = activeCat === t.categories.all ? tickets : tickets.filter(t => t.cat === activeCat);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <Ticket size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-serif dark:text-white">{t.ticketsTitle}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.ticketsSubtitle}</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+          <X size={20} className="text-stone-400" />
+        </button>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+        {categories.map(cat => (
+          <button 
+            key={cat}
+            onClick={() => setActiveCat(cat)}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              activeCat === cat 
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-200'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {filtered.map((ticket, i) => (
+          <div key={i} className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col">
+            <div className="relative h-40 overflow-hidden">
+              <img 
+                src={ticket.image} 
+                alt={ticket.name} 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              />
+              <div className="absolute top-3 left-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 text-[10px] font-bold text-amber-500 shadow-sm">
+                <Star size={10} fill="currentColor" />
+                {ticket.rating}
+              </div>
+              <div className="absolute top-3 right-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-sm">
+                {ticket.icon}
+              </div>
+            </div>
+            <div className="p-4 flex-1 flex flex-col">
+              <div className="mb-4">
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">{ticket.cat}</p>
+                <h4 className="font-bold text-stone-900 dark:text-white text-sm line-clamp-1">{ticket.name}</h4>
+              </div>
+              <div className="flex items-center justify-between mt-auto">
+                <div className="flex flex-col">
+                  <span className="text-[9px] text-stone-400 uppercase font-bold">{t.priceFrom}</span>
+                  <span className="text-sm font-mono font-bold text-stone-900 dark:text-white">{ticket.price}</span>
+                </div>
+                <button 
+                  onClick={() => window.open(ticket.url, '_blank')}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
+                >
+                  {t.buyNow}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[9px] text-stone-400 text-center italic mt-8">{t.referencePriceNote}</p>
+    </motion.div>
+  );
+};
+
+const ItineraryCard = ({ day, onLocationClick, t }: { day: any, onLocationClick: (loc: string) => void, t: any }) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    className="bg-white dark:bg-stone-900 rounded-3xl p-6 border border-stone-100 dark:border-stone-800 shadow-sm hover:shadow-md transition-all mb-4"
+  >
+    <div className="flex items-center gap-4 mb-6">
+      <div className="w-12 h-12 bg-stone-900 dark:bg-stone-100 rounded-2xl flex items-center justify-center text-white dark:text-stone-900 font-serif italic text-xl">
+        {day.day}
+      </div>
+      <div>
+        <h3 className="font-serif text-xl text-stone-900 dark:text-white">{t.day} {day.day}: {day.title}</h3>
+        <p className="text-stone-400 dark:text-stone-500 text-sm uppercase tracking-widest font-medium">{t.discoveryJourney}</p>
+      </div>
+    </div>
+
+    <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-stone-100 dark:before:bg-stone-800">
+      {day.activities.map((activity: any, idx: number) => (
+        <div key={idx} className="relative pl-12 group">
+          <div className="absolute left-0 top-1.5 w-10 h-10 bg-white dark:bg-stone-900 border-4 border-stone-50 dark:border-stone-800 rounded-full flex items-center justify-center z-10 group-hover:border-emerald-50 dark:group-hover:border-emerald-900/30 transition-colors">
+            <div className="w-2 h-2 bg-stone-300 dark:bg-stone-700 rounded-full group-hover:bg-emerald-500 transition-colors" />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mt-1 mb-2">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md w-fit">
+              {activity.time}
+            </span>
+            {activity.googleMapsUrl && (
+              <a 
+                href={activity.googleMapsUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[10px] flex items-center gap-1 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-bold uppercase tracking-tighter"
+              >
+                <MapIcon size={10} />
+                <span>Google Maps</span>
+              </a>
+            )}
+            <button 
+              onClick={() => onLocationClick(activity.location)}
+              className="text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:white transition-colors flex items-center gap-1 text-xs font-medium"
+            >
+              <span className="dark:text-stone-400"><Info size={14} /></span>
+              <span>{t.details}</span>
+            </button>
+          </div>
+          <h4 
+            onClick={() => onLocationClick(activity.location)}
+            className="font-medium text-stone-900 dark:text-stone-100 cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          >
+            {activity.activity} - {activity.location}
+          </h4>
+          <p className="text-stone-500 dark:text-stone-400 text-sm leading-relaxed mt-1">{activity.description}</p>
+        </div>
+      ))}
+    </div>
+  </motion.div>
+);
+
+const TravelPlanDisplay = ({ 
+  plan, 
+  onLocationClick, 
+  onSuggestionClick,
+  t
+}: { 
+  plan: TravelPlan, 
+  onLocationClick: (loc: string) => void,
+  onSuggestionClick: (suggestion: string) => void,
+  t: any
+}) => {
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'explorer' | 'events' | 'transport'>(() => {
+    // Default to the first available tab
+    if (plan.type === 'chat' || !plan.days || plan.days.length === 0) return 'itinerary';
+    return 'itinerary';
+  });
+  const [ticketSort, setTicketSort] = useState<'none' | 'price-asc' | 'price-desc' | 'name'>('none');
+  const [ticketTypeFilter, setTicketTypeFilter] = useState<'all' | 'ticket' | 'transport'>('all');
+  const [ticketSearch, setTicketSearch] = useState('');
+
+  // Helper to extract numeric price for sorting
+  const getNumericPrice = (priceStr: string) => {
+    if (!priceStr) return 0;
+    const cleaned = priceStr.replace(/[^\d]/g, '');
+    return cleaned ? parseInt(cleaned, 10) : 0;
+  };
+
+  // Combine and filter tickets/transportation
+  const combinedItems = [
+    ...(plan.tickets || []).map(t => ({ ...t, category: 'ticket' as const, title: t.name, info: t.bookingPoint, desc: t.note })),
+    ...(plan.transportation || []).map(t => ({ ...t, category: 'transport' as const, title: `${t.type} - ${t.provider}`, info: t.provider, desc: t.details }))
+  ];
+
+  const filteredItems = combinedItems
+    .filter(item => {
+      const matchesType = ticketTypeFilter === 'all' || item.category === ticketTypeFilter;
+      const matchesSearch = item.title.toLowerCase().includes(ticketSearch.toLowerCase()) || 
+                           item.desc.toLowerCase().includes(ticketSearch.toLowerCase());
+      return matchesType && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (ticketSort === 'name') return a.title.localeCompare(b.title);
+      if (ticketSort === 'price-asc') return getNumericPrice(a.price) - getNumericPrice(b.price);
+      if (ticketSort === 'price-desc') return getNumericPrice(b.price) - getNumericPrice(a.price);
+      return 0;
+    });
+
+  return (
+    <div className="w-full">
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <h2 className="text-4xl font-serif text-stone-900 dark:text-white tracking-tight">{plan.destination}</h2>
+          <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl w-fit h-fit">
+            <button 
+              onClick={() => setActiveTab('itinerary')}
+              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'itinerary' ? 'bg-white dark:bg-stone-700 shadow-md text-emerald-600 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300'}`}
+            >
+              {plan.type === 'chat' ? t.answer : t.itinerary}
+            </button>
+            {(plan.tickets && plan.tickets.length > 0 || plan.transportation && plan.transportation.length > 0) && (
+              <button 
+                onClick={() => setActiveTab('transport')}
+                className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'transport' ? 'bg-white dark:bg-stone-700 shadow-md text-emerald-600 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300'}`}
+              >
+                {t.transportTickets}
+              </button>
+            )}
+            {(plan.events && plan.events.length > 0) && (
+              <button 
+                onClick={() => setActiveTab('events')}
+                className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'events' ? 'bg-white dark:bg-stone-700 shadow-md text-emerald-600 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300'}`}
+              >
+                {t.events}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {activeTab === 'itinerary' && (
+        <div className="space-y-8">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 p-8 rounded-[32px] shadow-sm relative overflow-hidden"
+          >
+            {plan.type === 'chat' && (
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <Bot size={120} />
+              </div>
+            )}
+            <div className="prose prose-stone dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-stone-800 dark:prose-p:text-stone-200 prose-headings:font-serif prose-li:text-stone-700 dark:prose-li:text-stone-300 prose-a:text-emerald-600 dark:prose-a:text-emerald-400 prose-a:no-underline hover:prose-a:underline prose-a:font-bold prose-ul:list-disc prose-li:my-1">
+              <ReactMarkdown 
+                components={{
+                  a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />
+                }}
+              >
+                {plan.summary}
+              </ReactMarkdown>
+            </div>
+          </motion.div>
+
+          {plan.type === 'plan' && plan.itinerarySummary && plan.itinerarySummary.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-stone-900 rounded-3xl p-6 border border-stone-100 dark:border-stone-800 shadow-sm overflow-hidden"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center">
+                  <Calendar className="text-emerald-600 dark:text-emerald-400" size={18} />
+                </div>
+                <h3 className="text-lg font-serif dark:text-white">{t.itinerarySummary}</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-stone-100 dark:border-stone-800">
+                      <th className="py-3 px-4 font-bold text-stone-900 dark:text-white">{t.day}</th>
+                      <th className="py-3 px-4 font-bold text-stone-900 dark:text-white">{t.mainArea}</th>
+                      <th className="py-3 px-4 font-bold text-stone-900 dark:text-white">{t.experienceFocus}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plan.itinerarySummary.map((item, idx) => (
+                      <tr key={idx} className="border-b border-stone-50 dark:border-stone-800/50 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
+                        <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">{item.day}</td>
+                        <td className="py-3 px-4 text-stone-700 dark:text-stone-300">{item.area}</td>
+                        <td className="py-3 px-4 text-stone-600 dark:text-stone-400 italic">{item.focus}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
+          {plan.type === 'plan' && (
+            <div className="space-y-4">
+              {(plan.days || []).map((day) => (
+                <ItineraryCard key={day.day} day={day} onLocationClick={onLocationClick} t={t} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'transport' && (
+        <div className="space-y-8">
+          {combinedItems.length > 0 ? (
+            <div className="bg-white dark:bg-stone-900 rounded-3xl p-8 border border-stone-100 dark:border-stone-800 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <Ticket size={24} />
+                  </div>
+                  <h3 className="text-xl font-serif dark:text-white">{t.ticketsTransport}</h3>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
+                    <input 
+                      type="text"
+                      placeholder={t.searchPlaceholder}
+                      value={ticketSearch}
+                      onChange={(e) => setTicketSearch(e.target.value)}
+                      className="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-white w-40"
+                    />
+                  </div>
+
+                  <select 
+                    value={ticketTypeFilter}
+                    onChange={(e) => setTicketTypeFilter(e.target.value as any)}
+                    className="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-white"
+                  >
+                    <option value="all">{t.allTypes}</option>
+                    <option value="ticket">{t.sightseeingTickets}</option>
+                    <option value="transport">{t.transport}</option>
+                  </select>
+                  
+                  <select 
+                    value={ticketSort}
+                    onChange={(e) => setTicketSort(e.target.value as any)}
+                    className="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:text-white"
+                  >
+                    <option value="none">{t.sortBy}</option>
+                    <option value="price-asc">{t.priceLowToHigh}</option>
+                    <option value="price-desc">{t.priceHighToLow}</option>
+                    <option value="name">{t.nameAZ}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map((item, i) => (
+                    <div key={i} className="border-b border-stone-50 dark:border-stone-800 last:border-0 pb-4 last:pb-0 group">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                              item.category === 'ticket' 
+                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' 
+                                : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                            }`}>
+                              {item.category === 'ticket' ? t.ticket : t.transport}
+                            </span>
+                            <h4 className="font-bold text-stone-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                              {item.title}
+                            </h4>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-stone-400 dark:text-stone-500 mt-1 mb-2">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{item.price}</span>
+                            <span className="mx-1">•</span>
+                            <span>{item.category === 'ticket' ? t.buyAt : t.provider} {item.info}</span>
+                          </div>
+                          <p className="text-stone-500 dark:text-stone-400 text-xs leading-relaxed italic">{item.desc}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+              <h3 className="text-lg font-medium text-stone-900 dark:text-white mb-2">{t.noItemsFound}</h3>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-stone-50 dark:bg-stone-900/50 rounded-3xl border border-dashed border-stone-200 dark:border-stone-800">
+              <div className="inline-flex p-4 bg-stone-100 dark:bg-stone-800 rounded-full text-stone-400 dark:text-stone-600 mb-4">
+                <Car size={32} />
+              </div>
+              <h3 className="text-lg font-medium text-stone-900 dark:text-white mb-2">{t.noTransportInfo}</h3>
+              <p className="text-stone-500 dark:text-stone-400 max-w-xs mx-auto">{t.askAiTransport.replace('{destination}', plan.destination)}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'events' && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+              <PartyPopper size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-serif dark:text-white">Sự kiện & Lễ hội thời gian thực</h3>
+              <p className="text-xs text-stone-400 dark:text-stone-500">Cập nhật mới nhất cho chuyến đi của bạn</p>
+            </div>
+          </div>
+
+          {plan.events && plan.events.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {plan.events.map((event, idx) => (
+                <div key={idx} className="bg-white dark:bg-stone-900 rounded-3xl p-6 border border-stone-100 dark:border-stone-800 shadow-sm hover:shadow-md transition-all group">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                      <PartyPopper size={24} />
+                    </div>
+                    <span className="px-3 py-1 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      {event.type}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-serif text-stone-900 dark:text-white mb-2">{event.name}</h3>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-stone-500 dark:text-stone-400 text-sm">
+                      <Calendar size={14} className="text-emerald-500" />
+                      <span>{event.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-stone-500 dark:text-stone-400 text-sm">
+                      <MapPin size={14} className="text-emerald-500" />
+                      <span>{event.location}</span>
+                    </div>
+                  </div>
+                  <p className="text-stone-600 dark:text-stone-400 text-sm leading-relaxed">{event.description}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-stone-50 dark:bg-stone-900/50 rounded-3xl border border-dashed border-stone-200 dark:border-stone-800">
+              <div className="inline-flex p-4 bg-stone-100 dark:bg-stone-800 rounded-full text-stone-400 dark:text-stone-600 mb-4">
+                <Music size={32} />
+              </div>
+              <h3 className="text-lg font-medium text-stone-900 dark:text-white mb-2">{t.noEventsFound}</h3>
+              <p className="text-stone-500 dark:text-stone-400 max-w-xs mx-auto">{t.noMajorEvents.replace('{destination}', plan.destination)}</p>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {plan.suggestions && plan.suggestions.length > 0 && (
+        <div className="mt-8 pt-8 border-t border-stone-100 dark:border-stone-800">
+          <div className="flex items-center gap-2 mb-4">
+            <Compass size={16} className="text-emerald-600 dark:text-emerald-400" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">{t.suggestionsForYou}</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {plan.suggestions.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => onSuggestionClick(item.query)}
+                className="group p-3 bg-stone-50/50 dark:bg-stone-800/30 border border-stone-100 dark:border-stone-800 rounded-xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:bg-white dark:hover:bg-stone-800 transition-all text-left flex items-center gap-3"
+              >
+                <div className="w-10 h-10 shrink-0 bg-white dark:bg-stone-900 rounded-lg flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform">
+                  {item.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-stone-900 dark:text-white text-sm truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    {item.title}
+                  </h4>
+                  <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">
+                    {item.description}
+                  </p>
+                </div>
+                <ArrowRight size={14} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Main Application ---
+
+const AppContent = ({ language, setLanguage }: { language: Language, setLanguage: React.Dispatch<React.SetStateAction<Language>> }) => {
+  const [prompt, setPrompt] = useState('');
+  const [headerSearch, setHeaderSearch] = useState('');
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const t = translations[language];
+
+  const toggleLanguage = () => {
+    const langs: Language[] = ['en', 'ja', 'vi'];
+    const nextIndex = (langs.indexOf(language) + 1) % langs.length;
+    setLanguage(langs[nextIndex]);
+  };
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [locationInfo, setLocationInfo] = useState<{ text: string, grounding?: any } | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [showSavedPlans, setShowSavedPlans] = useState(false);
+
+  // Suggested topics based on popular queries and AI strengths
+  const suggestedTopics = t.suggestedTopics;
+
+  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'cafe' | 'secondhand' | 'personalization'>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userPrefs, setUserPrefs] = useState<any>(null);
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Preferences Listener
+  useEffect(() => {
+    if (user) {
+      const unsub = onSnapshot(doc(db, 'users', user.uid, 'preferences', 'main'), (docSnap: any) => {
+        if (docSnap.exists()) {
+          setUserPrefs(docSnap.data());
+        }
+      });
+      return () => unsub();
+    } else {
+      setUserPrefs(null);
+    }
+  }, [user]);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsReady(true);
+    // Load saved sessions
+    const saved = localStorage.getItem('japan_ai_sessions');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Convert string timestamps back to Date objects
+        const sessions = parsed.map((s: any) => ({
+          ...s,
+          messages: s.messages.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp)
+          }))
+        }));
+        setSavedSessions(sessions);
+      } catch (e) {
+        console.error("Error loading saved sessions:", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isReady) {
+      localStorage.setItem('japan_ai_sessions', JSON.stringify(savedSessions));
+    }
+  }, [savedSessions, isReady]);
+
+  const saveCurrentSession = () => {
+    if (messages.length === 0) return;
+    
+    // Find the first user message or AI plan title for the session title
+    const firstUserMsg = messages.find(m => m.type === 'user')?.content || 'Chuyến đi mới';
+    const title = firstUserMsg.length > 30 ? firstUserMsg.substring(0, 30) + '...' : firstUserMsg;
+    
+    const newSession: SavedSession = {
+      id: Date.now().toString(),
+      title,
+      messages: [...messages],
+      timestamp: Date.now()
+    };
+    
+    setSavedSessions(prev => [newSession, ...prev]);
+    // Use a custom toast or just translations for alert
+    alert(t.saved);
+  };
+
+  const loadSession = (session: SavedSession) => {
+    setMessages(session.messages);
+    setShowSavedPlans(false);
+  };
+
+  const deleteSession = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(t.confirmDelete)) {
+      setSavedSessions(prev => prev.filter(s => s.id !== id));
+    }
+  };
+
+  const clearChat = () => {
+    if (messages.length > 0 && confirm(t.confirmNewChat)) {
+      setMessages([]);
+    }
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
+  const generatePlan = async (userPrompt: string) => {
+    if (!userPrompt.trim() || loading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: userPrompt,
+      timestamp: new Date()
+    };
+
+    const loadingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'loading',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage, loadingMessage]);
+    setLoading(true);
+    setPrompt('');
+
+    if (!user) {
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== loadingMessage.id);
+        return [...filtered, {
+          id: Date.now().toString(),
+          type: 'error',
+          content: t.errorLoginRequired,
+          timestamp: new Date()
+        }];
+      });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Build history for AI
+      const history = messages
+        .filter(m => m.type === 'user' || m.type === 'ai')
+        .map(m => ({
+          role: m.type === 'user' ? 'user' as const : 'model' as const,
+          text: m.type === 'user' ? m.content || '' : JSON.stringify(m.plan)
+        }));
+
+      // Add a timeout for the AI generation
+      const generationPromise = generateTravelPlan(userPrompt, user?.uid, user?.email, history, (text) => {
+        setMessages(prev => {
+          // Optimization: Only update the last message if it's the loading one
+          const lastIdx = prev.length - 1;
+          if (lastIdx >= 0 && prev[lastIdx].id === loadingMessage.id) {
+            const newMessages = [...prev];
+            newMessages[lastIdx] = {
+              ...newMessages[lastIdx],
+              streamingText: text
+            };
+            return newMessages;
+          }
+          return prev;
+        });
+      }, language);
+      
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error(t.errorTimeout)), 120000)
+      );
+
+      const result = await Promise.race([generationPromise, timeoutPromise]);
+      
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.type !== 'loading');
+        return [...filtered, {
+          id: Date.now().toString(),
+          type: 'ai',
+          plan: result,
+          timestamp: new Date()
+        }];
+      });
+    } catch (err) {
+      console.error("Plan generation error:", err);
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.type !== 'loading');
+        return [...filtered, {
+          id: Date.now().toString(),
+          type: 'error',
+          content: err instanceof Error ? err.message : t.errorGeneral,
+          timestamp: new Date()
+        }];
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const regeneratePlan = async (userPrompt: string) => {
+    if (!userPrompt.trim() || loading) return;
+    
+    // Remove last AI message and its corresponding loading if any
+    setMessages(prev => {
+      const newMessages = [...prev];
+      if (newMessages.length > 0 && newMessages[newMessages.length - 1].type === 'ai') {
+        newMessages.pop();
+      }
+      return newMessages;
+    });
+    
+    generatePlan(userPrompt);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    generatePlan(prompt);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    generatePlan(suggestion);
+  };
+
+  const handleLocationClick = async (location: string) => {
+    setSelectedLocation(location);
+    setLoadingInfo(true);
+    try {
+      const info = await getPlaceInfo(location, language);
+      setLocationInfo(info);
+    } catch (err) {
+      console.error(err);
+      setLocationInfo({ text: t.errorNoInfo });
+    } finally {
+      setLoadingInfo(false);
+    }
+  };
+
+  if (!isReady) return <SplashScreen language={language} />;
+
+  return (
+    <div className="min-h-screen bg-[#FDFCFB] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col transition-colors duration-300">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-stone-900 dark:bg-stone-100 rounded-xl flex items-center justify-center">
+            <Compass className="text-white dark:text-stone-900 w-6 h-6" />
+          </div>
+          <span className="font-serif italic text-2xl tracking-tight dark:text-white">{t.appName}</span>
+        </div>
+
+        {/* Header Search Bar */}
+        <div className="hidden md:flex flex-1 max-w-md mx-8">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (headerSearch.trim()) {
+                generatePlan(headerSearch);
+                setHeaderSearch('');
+              }
+            }}
+            className="relative w-full group"
+          >
+            <input 
+              type="text" 
+              value={headerSearch}
+              onChange={(e) => setHeaderSearch(e.target.value)}
+              placeholder={t.searchPlaceholder}
+              className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
+          </form>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {/* Mobile Search Toggle */}
+          <button 
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="md:hidden p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
+          >
+            {showMobileSearch ? <X size={20} /> : <Search size={20} />}
+          </button>
+
+          {messages.length > 0 && (
+            <>
+              <button 
+                onClick={saveCurrentSession}
+                className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+                title={t.save}
+              >
+                <Save size={20} />
+                <span className="hidden sm:inline">{t.save}</span>
+              </button>
+              <button 
+                onClick={clearChat}
+                className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+                title={t.newChat}
+              >
+                <Plus size={20} />
+                <span className="hidden sm:inline">{t.newChat}</span>
+              </button>
+            </>
+          )}
+          <button 
+            onClick={() => setShowSavedPlans(true)}
+            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+            title={t.history}
+          >
+            <History size={20} />
+            <span className="hidden sm:inline">{t.history}</span>
+          </button>
+          
+          <button 
+            onClick={toggleLanguage}
+            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors font-bold text-xs uppercase"
+            title="Switch Language"
+          >
+            {language}
+          </button>
+
+          <button 
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
+          >
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+
+          {/* Login/Logout Button */}
+          {user && userPrefs && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/50 mr-2">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                {t.personalization.welcomeBack.replace('{name}', user.displayName?.split(' ')[0] || 'Traveler')}
+              </span>
+            </div>
+          )}
+          {authLoading ? (
+            <div className="w-10 h-10 flex items-center justify-center">
+              <Loader2 className="animate-spin text-stone-400" size={20} />
+            </div>
+          ) : user ? (
+            <div className="flex items-center gap-3 pl-2 border-l border-stone-100 dark:border-stone-800">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">5 lượt/ngày</span>
+                <button 
+                  onClick={logout}
+                  className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors uppercase tracking-wider"
+                >
+                  {t.logout}
+                </button>
+              </div>
+              <img 
+                src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`} 
+                alt={user.displayName || 'User'} 
+                className="w-8 h-8 rounded-full border border-stone-200 dark:border-stone-700"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ) : (
+            <button 
+              onClick={loginWithGoogle}
+              className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+            >
+              <User size={18} />
+              <span>{t.login}</span>
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* Mobile Search Overlay */}
+      <AnimatePresence>
+        {showMobileSearch && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileSearch(false)}
+              className="fixed inset-0 bg-stone-950/20 backdrop-blur-[2px] z-[40] md:hidden"
+            />
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-20 left-0 right-0 bg-white dark:bg-stone-900 z-[45] border-b border-stone-100 dark:border-stone-800 p-4 md:hidden"
+            >
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (headerSearch.trim()) {
+                  generatePlan(headerSearch);
+                  setHeaderSearch('');
+                  setShowMobileSearch(false);
+                }
+              }}
+              className="relative w-full group"
+            >
+              <input 
+                type="text" 
+                autoFocus
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder={t.searchPlaceholder}
+                className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+            </form>
+          </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Saved Plans Modal */}
+      <AnimatePresence>
+        {showSavedPlans && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSavedPlans(false)}
+              className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-stone-900 rounded-[32px] shadow-2xl overflow-hidden border border-stone-100 dark:border-stone-800"
+            >
+              <div className="p-8 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-serif dark:text-white">{t.savedPlansTitle}</h2>
+                  <p className="text-sm text-stone-400 dark:text-stone-500">{t.savedPlansSubtitle}</p>
+                </div>
+                <button 
+                  onClick={() => setShowSavedPlans(false)}
+                  className="p-2 hover:bg-stone-50 dark:hover:bg-stone-800 rounded-full transition-colors text-stone-400"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                {savedSessions.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <div className="w-16 h-16 bg-stone-50 dark:bg-stone-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Folder className="text-stone-300 dark:text-stone-600 w-8 h-8" />
+                    </div>
+                    <p className="text-stone-400 dark:text-stone-500 italic">{t.noSavedPlans}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {savedSessions.map((session) => (
+                      <div 
+                        key={session.id}
+                        onClick={() => loadSession(session)}
+                        className="group flex items-center justify-between p-4 rounded-2xl hover:bg-stone-50 dark:hover:bg-stone-800 border border-transparent hover:border-stone-100 dark:hover:border-stone-700 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                            <MapPin size={20} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-stone-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                              {session.title}
+                            </h4>
+                            <p className="text-xs text-stone-400 dark:text-stone-500">
+                              {new Date(session.timestamp).toLocaleDateString(language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US', { 
+                                day: 'numeric', 
+                                month: 'long', 
+                                year: 'numeric' 
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={(e) => deleteSession(session.id, e)}
+                          className="p-2 text-stone-300 hover:text-red-500 dark:text-stone-600 dark:hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-6 bg-stone-50 dark:bg-stone-800/50 border-t border-stone-100 dark:border-stone-800">
+                <p className="text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-widest text-center font-bold">
+                  {t.localDataNote}
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <main className="flex-1 pt-32 pb-32 px-6 max-w-5xl mx-auto w-full relative">
+        {messages.length === 0 ? (
+          /* Hero Section */
+          <div className="flex flex-col items-center text-center py-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-3xl"
+            >
+              <h1 className="text-6xl md:text-7xl font-serif leading-[1.1] mb-8 dark:text-white">
+                {t.heroTitle} <br />
+                <span className="italic text-emerald-600 dark:text-emerald-400">{t.heroSubtitle}</span>
+              </h1>
+
+              <AnimatePresence mode="wait">
+                {activeUtility ? (
+                  <div className="flex justify-center mb-12">
+                    {activeUtility === 'train' && (
+                      <TrainSearch 
+                        onClose={() => setActiveUtility(null)} 
+                        language={language}
+                      />
+                    )}
+                    {activeUtility === 'tickets' && (
+                      <TicketSearch 
+                        onClose={() => setActiveUtility(null)} 
+                        language={language}
+                      />
+                    )}
+                    {activeUtility === 'cafe' && (
+                      <CafeSearch 
+                        onClose={() => setActiveUtility(null)} 
+                        language={language}
+                      />
+                    )}
+                    {activeUtility === 'secondhand' && (
+                      <SecondHandSearch 
+                        onClose={() => setActiveUtility(null)} 
+                        language={language}
+                      />
+                    )}
+                    {activeUtility === 'personalization' && (
+                      <Personalization 
+                        onClose={() => setActiveUtility(null)} 
+                        language={language}
+                        user={user}
+                        currentPrefs={userPrefs}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <p className="text-stone-500 dark:text-stone-400 text-lg mb-12 max-w-md mx-auto leading-relaxed">
+                      {t.heroDescription}
+                    </p>
+
+                    <form onSubmit={handleFormSubmit} className="relative max-w-xl mx-auto group mb-12">
+                      <input 
+                        type="text" 
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder={t.heroInputPlaceholder}
+                        className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl py-6 pl-8 pr-20 shadow-xl shadow-stone-100 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-stone-800 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600"
+                      />
+                      <button 
+                        disabled={loading}
+                        className="absolute right-3 top-3 bottom-3 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-6 rounded-2xl flex items-center justify-center hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
+                      >
+                        {loading ? <Loader2 className="animate-spin" /> : <ArrowRight />}
+                      </button>
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              <div className="max-w-2xl mx-auto">
+                <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-8 text-center">{t.popularTopics}</p>
+                <div className="flex flex-col gap-4">
+                  {t.suggestedTopics.filter((topic: any) => !topic.utility).map((topic: any) => (
+                    <button 
+                      key={topic.text}
+                      onClick={() => {
+                        if (topic.utility) {
+                          setActiveUtility(topic.utility as any);
+                        } else {
+                          setPrompt(topic.query || '');
+                        }
+                      }}
+                      className="group p-6 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-6 w-full"
+                    >
+                      <div className="w-16 h-16 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform shadow-sm">
+                        {topic.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-stone-900 dark:text-white text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                          {topic.text}
+                        </h4>
+                        <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                          {topic.description}
+                        </p>
+                      </div>
+                      <ArrowRight size={20} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        ) : (
+          /* Chat History Section */
+          <div className="space-y-12 pb-12">
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex gap-4 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {message.type !== 'user' && (
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                    <Bot className="text-emerald-600 dark:text-emerald-400 w-6 h-6" />
+                  </div>
+                )}
+                
+                <div className={`max-w-[85%] ${message.type === 'user' ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 p-4 rounded-2xl rounded-tr-none shadow-lg' : 'w-full'}`}>
+                  {message.type === 'user' && <p className="text-sm leading-relaxed">{message.content}</p>}
+                  
+                  {message.type === 'ai' && message.plan && (
+                    <div className="space-y-4">
+                      <TravelPlanDisplay 
+                        plan={message.plan} 
+                        onLocationClick={handleLocationClick}
+                        onSuggestionClick={handleSuggestionClick}
+                        t={t}
+                      />
+                      <div className="flex justify-end">
+                        <button 
+                          onClick={() => {
+                            // Find the last user message to get the prompt
+                            const userMessages = messages.filter(m => m.type === 'user');
+                            if (userMessages.length > 0) {
+                              regeneratePlan(userMessages[userMessages.length - 1].content || '');
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-100 dark:border-stone-800"
+                        >
+                          <History size={14} />
+                          <span>{t.regenerate}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {message.type === 'loading' && (
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-emerald-600 dark:text-emerald-400 w-6 h-6" />
+                          </div>
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-stone-900 animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-stone-900 dark:text-white text-sm">JapanAI đang xử lý...</h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex gap-1">
+                              <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 rounded-full bg-emerald-500" />
+                              <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 rounded-full bg-emerald-500" />
+                              <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 rounded-full bg-emerald-500" />
+                            </div>
+                            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Đang tối ưu hóa lịch trình</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { label: 'Tìm kiếm địa điểm', delay: 0 },
+                          { label: 'Tính toán chi phí', delay: 0.5 },
+                          { label: 'Kiểm tra sự kiện', delay: 1.0 },
+                          { label: 'Tối ưu hóa bản đồ', delay: 1.5 }
+                        ].map((step, i) => (
+                          <motion.div 
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: step.delay }}
+                            className="flex items-center gap-2 px-3 py-2 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-100 dark:border-stone-800"
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">{step.label}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+                      
+                      {message.streamingText && (
+                        <div className="bg-stone-50 dark:bg-stone-900/50 p-4 rounded-2xl border border-stone-100 dark:border-stone-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] uppercase tracking-widest text-stone-400 font-bold">{t.loadingRawData}</p>
+                            <div className="flex gap-1">
+                              <div className="w-1 h-1 rounded-full bg-emerald-500 animate-ping" />
+                              <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                            </div>
+                          </div>
+                          <div className="max-h-24 overflow-y-auto font-mono text-[9px] text-stone-500 dark:text-stone-600 break-all opacity-40">
+                            {message.streamingText}
+                          </div>
+                        </div>
+                      )}
+
+                      <button 
+                        onClick={() => {
+                          setLoading(false);
+                          setMessages(prev => prev.filter(m => m.id !== message.id));
+                        }}
+                        className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors uppercase tracking-widest text-center"
+                      >
+                        {t.cancelRequest}
+                      </button>
+                    </div>
+                  )}
+
+                  {message.type === 'error' && (
+                    <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 shrink-0" />
+                      <p>{message.content}</p>
+                    </div>
+                  )}
+                </div>
+
+                {message.type === 'user' && (
+                  <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0">
+                    <User className="text-stone-600 w-6 h-6" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </main>
+
+      {/* Quick Tools - Always visible at bottom */}
+      <div className="fixed bottom-8 left-0 right-0 z-40 pointer-events-none">
+        <div className="max-w-4xl mx-auto px-4 flex flex-wrap justify-center gap-2 pointer-events-auto">
+          {t.suggestedTopics.filter((topic: any) => topic.utility).map((topic: any) => (
+            <button
+              key={topic.utility}
+              onClick={() => setActiveUtility(topic.utility as any)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border backdrop-blur-md shadow-lg ${
+                activeUtility === topic.utility
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-200 border-stone-200 dark:border-stone-800 hover:border-emerald-500/50'
+              }`}
+            >
+              <span>{topic.icon}</span>
+              <span className="hidden sm:inline">{topic.text}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sticky Input Field */}
+      {messages.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-t border-stone-100 dark:border-stone-800 p-4 z-40">
+          <div className="max-w-3xl mx-auto">
+            <form onSubmit={handleFormSubmit} className="relative">
+              <input 
+                type="text" 
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={t.askMorePlaceholder}
+                className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl py-4 pl-6 pr-16 shadow-lg shadow-stone-100 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-stone-800 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600"
+              />
+              <button 
+                disabled={loading}
+                className="absolute right-2 top-2 bottom-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-4 rounded-xl flex items-center justify-center hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Send size={20} />}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Location Detail Modal */}
+      <AnimatePresence>
+        {selectedLocation && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedLocation(null)}
+              className="absolute inset-0 bg-stone-900/40 dark:bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 rounded-[32px] w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl flex flex-col border border-stone-100 dark:border-stone-800"
+            >
+              <div className="p-8 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                    <Info className="text-emerald-600 dark:text-emerald-400 w-5 h-5" />
+                  </div>
+                  <h4 className="text-2xl font-serif dark:text-white">{selectedLocation}</h4>
+                </div>
+                <button 
+                  onClick={() => setSelectedLocation(null)}
+                  className="w-10 h-10 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center transition-colors dark:text-stone-400"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-8 overflow-y-auto flex-1">
+                {loadingInfo ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <Loader2 className="animate-spin text-emerald-600 dark:text-emerald-400 w-8 h-8" />
+                    <p className="text-stone-400 dark:text-stone-500 font-serif italic">{t.findingInfo}</p>
+                  </div>
+                ) : (
+                  <div className="prose prose-stone dark:prose-invert max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />
+                      }}
+                    >
+                      {locationInfo?.text || ''}
+                    </ReactMarkdown>
+                    
+                    {locationInfo?.grounding && Array.isArray(locationInfo.grounding) && locationInfo.grounding.length > 0 && (
+                      <div className="mt-8 pt-8 border-t border-stone-100 dark:border-stone-800">
+                        <p className="text-[10px] uppercase tracking-widest text-stone-400 dark:text-stone-500 mb-4 font-bold">{t.reliableSources}</p>
+                        <div className="flex flex-wrap gap-3">
+                          {locationInfo.grounding.map((chunk: any, i: number) => (
+                            chunk.web && (
+                              <a 
+                                key={i} 
+                                href={chunk.web.uri} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs bg-stone-50 dark:bg-stone-800 px-4 py-2 rounded-xl border border-stone-100 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors flex items-center gap-2 dark:text-stone-300"
+                              >
+                                <span>{chunk.web.title || t.seeMore}</span>
+                                <ArrowRight size={12} />
+                              </a>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Footer */}
+      <footer className="bg-stone-50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 py-20 px-6">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
+          <div className="col-span-2">
+            <div className="flex items-center gap-2 mb-6">
+              <Compass className="text-stone-900 dark:text-white w-6 h-6" />
+              <span className="font-serif italic text-2xl tracking-tight dark:text-white">JapanAI</span>
+            </div>
+            <p className="text-stone-400 dark:text-stone-500 text-sm max-w-xs leading-relaxed">
+              {t.footerDescription}
+            </p>
+            <a 
+              href="https://olachill.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-block mt-4 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              Visit olachill.com
+            </a>
+          </div>
+          <div>
+            <h5 className="font-medium mb-6 dark:text-white">{t.product}</h5>
+            <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
+              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.features}</a></li>
+              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.pricing}</a></li>
+              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.downloadApp}</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5 className="font-medium mb-6 dark:text-white">{t.support}</h5>
+            <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
+              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.helpCenter}</a></li>
+              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.contact}</a></li>
+              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.terms}</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-stone-200 dark:border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-stone-400 dark:text-stone-500">© 2026 JapanAI. {t.allRightsReserved}</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default function App() {
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('language');
+      if (saved === 'en' || saved === 'ja' || saved === 'vi') return saved as Language;
+    }
+    return 'vi';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('language', language);
+  }, [language]);
+
+  return (
+    <ErrorBoundary language={language}>
+      <AppContent language={language} setLanguage={setLanguage} />
+    </ErrorBoundary>
+  );
+}

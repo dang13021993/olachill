@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and usage tracking",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "dailyUsageCount": { "type": "integer" },
+        "lastUsageDate": { "type": "string", "format": "date" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid", "email"]
+    },
+    "TravelPlanCache": {
+      "title": "TravelPlanCache",
+      "description": "Cached travel plans to save API costs",
+      "type": "object",
+      "properties": {
+        "promptHash": { "type": "string" },
+        "plan": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["promptHash", "plan", "createdAt"]
+    },
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "User specific travel preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "budget": { "type": "string", "enum": ["low", "medium", "high"] },
+        "travelStyle": { "type": "string", "enum": ["relaxed", "balanced", "active"] },
+        "interests": { "type": "array", "items": { "type": "string" } },
+        "dietary": { "type": "string", "enum": ["none", "vegetarian", "halal", "gluten-free"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and usage data"
+    },
+    "/users/{userId}/preferences/main": {
+      "schema": "UserPreferences",
+      "description": "User specific travel preferences"
+    },
+    "/plans/{planId}": {
+      "schema": "TravelPlanCache",
+      "description": "Cached travel plans"
+    }
+  }
+}
