@@ -31,11 +31,15 @@ import {
   History,
   Plus,
   Music,
-  PartyPopper
+  PartyPopper,
+  QrCode,
+  Crown,
+  Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { generateTravelPlan, getPlaceInfo, TravelPlan } from './services/travelService';
+import { searchTransitLocal, TransitMode } from './services/transitService';
 import { auth, loginWithGoogle, logout, db } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -125,42 +129,15 @@ const ErrorBoundary = ({ children, language }: { children: React.ReactNode, lang
 
 // --- Services ---
 
-const searchTransit = async (from: string, to: string, date: string, time: string, language: Language) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const prompt = `Find train routes from ${from} to ${to} on ${date} at around ${time}. 
-  Provide 3 best options with: type (e.g. Shinkansen, JR), duration, price (in JPY), departure time, arrival time, and number of changes.
-  Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
-
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            type: { type: Type.STRING },
-            time: { type: Type.STRING, description: "Duration e.g. 2h 15m" },
-            price: { type: Type.STRING, description: "Price e.g. 13,910 JPY" },
-            departure: { type: Type.STRING, description: "Departure time e.g. 09:00" },
-            arrival: { type: Type.STRING, description: "Arrival time e.g. 11:15" },
-            changes: { type: Type.STRING, description: "Number of changes" }
-          },
-          required: ["type", "time", "price", "departure", "arrival", "changes"]
-        }
-      }
-    }
-  });
-
-  try {
-    return JSON.parse(response.text);
-  } catch (e) {
-    console.error("Error parsing transit results:", e);
-    return [];
-  }
+const searchTransit = async (
+  from: string,
+  to: string,
+  _date: string,
+  time: string,
+  _language: Language,
+  mode: TransitMode
+) => {
+  return searchTransitLocal(from, to, time, mode);
 };
 
 // --- Components ---
@@ -187,12 +164,21 @@ const ALL_STATIONS = Array.from(new Set([
   ...Object.values(JAPAN_STATIONS_BY_CITY).flat()
 ]));
 
-const TrainSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
+const TrainSearch = ({
+  onClose,
+  language,
+  initialMode = 'train'
+}: {
+  onClose: () => void,
+  language: Language,
+  initialMode?: TransitMode
+}) => {
   const t = translations[language];
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('09:00');
+  const [mode, setMode] = useState<TransitMode>(initialMode);
   const [showResults, setShowResults] = useState(false);
   const [fromSuggestions, setFromSuggestions] = useState<string[]>([]);
   const [toSuggestions, setToSuggestions] = useState<string[]>([]);
@@ -229,17 +215,11 @@ const TrainSearch = ({ onClose, language }: { onClose: () => void, language: Lan
     if (!from || !to) return;
     
     setSearching(true);
-    const transitResults = await searchTransit(from, to, date, time, language);
+    const transitResults = await searchTransit(from, to, date, time, language, mode);
     setResults(transitResults);
     setSearching(false);
     setShowResults(true);
   };
-
-  const mockResults = [
-    { type: 'Shinkansen Nozomi', time: '2h 15m', price: '13,910 JPY', departure: '09:00', arrival: '11:15', changes: '0' },
-    { type: 'Shinkansen Hikari', time: '2h 40m', price: '13,600 JPY', departure: '09:12', arrival: '11:52', changes: '0' },
-    { type: 'JR Special Rapid', time: '8h 30m', price: '8,360 JPY', departure: '08:00', arrival: '16:30', changes: '3' },
-  ];
 
   return (
     <motion.div 
@@ -264,6 +244,33 @@ const TrainSearch = ({ onClose, language }: { onClose: () => void, language: Lan
 
       {!showResults ? (
         <form onSubmit={handleSearch} className="space-y-6">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setMode('train')}
+              className={`py-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
+                mode === 'train'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20'
+                  : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              <span>🚄</span>
+              <span>{t.transitTrain}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('bus')}
+              className={`py-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
+                mode === 'bus'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20'
+                  : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              <span>🚌</span>
+              <span>{t.transitBus}</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 relative">
               <label className="text-xs font-bold text-stone-500 dark:text-stone-400 ml-1">{t.from}</label>
@@ -785,6 +792,16 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
   const t = translations[language];
   const categories = [t.categories.all, t.categories.themePark, t.categories.museum, t.categories.observatory, t.categories.experience];
   const [activeCat, setActiveCat] = useState(t.categories.all);
+  const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
+
+  const getBrandedLink = (slug: string) => {
+    if (typeof window === 'undefined') return `/go/${slug}`;
+    return `${window.location.origin}/go/${slug}`;
+  };
+
+  const openPartnerLink = (slug: string) => {
+    window.open(`/go/${slug}`, '_blank', 'noopener,noreferrer');
+  };
 
   const tickets = [
     { 
@@ -794,7 +811,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.themePark, 
       rating: 4.9,
       image: 'https://picsum.photos/seed/disney/400/250',
-      url: 'https://www.tokyodisneyresort.jp/en/tdl/ticket/'
+      slug: 'tokyo-disneyland'
     },
     { 
       name: 'Universal Studios Japan', 
@@ -803,7 +820,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.themePark, 
       rating: 4.8,
       image: 'https://picsum.photos/seed/usj/400/250',
-      url: 'https://www.usj.co.jp/web/en/us/tickets'
+      slug: 'usj'
     },
     { 
       name: 'TeamLab Borderless', 
@@ -812,7 +829,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.museum, 
       rating: 4.9,
       image: 'https://picsum.photos/seed/teamlab/400/250',
-      url: 'https://www.teamlab.art/e/borderless-azabudai/'
+      slug: 'teamlab-borderless'
     },
     { 
       name: 'Shibuya Sky', 
@@ -821,7 +838,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.observatory, 
       rating: 4.7,
       image: 'https://picsum.photos/seed/shibuya/400/250',
-      url: 'https://www.shibuya-scramble-square.com/sky/ticket/en/'
+      slug: 'shibuya-sky'
     },
     { 
       name: 'Ghibli Museum', 
@@ -830,7 +847,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.museum, 
       rating: 5.0,
       image: 'https://picsum.photos/seed/ghibli/400/250',
-      url: 'https://www.ghibli-museum.jp/en/tickets/'
+      slug: 'ghibli-museum'
     },
     { 
       name: 'Tokyo Skytree', 
@@ -839,7 +856,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.observatory, 
       rating: 4.6,
       image: 'https://picsum.photos/seed/skytree/400/250',
-      url: 'https://www.tokyo-skytree.jp/en/ticket/'
+      slug: 'tokyo-skytree'
     },
     { 
       name: 'Kyoto Kimono Rental', 
@@ -848,7 +865,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.experience, 
       rating: 4.8,
       image: 'https://picsum.photos/seed/kimono/400/250',
-      url: 'https://www.yumeyakata.com/english/'
+      slug: 'kyoto-kimono'
     },
     { 
       name: 'Nara Deer Park Tour', 
@@ -857,90 +874,445 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       cat: t.categories.experience, 
       rating: 4.7,
       image: 'https://picsum.photos/seed/nara/400/250',
-      url: 'https://www.visitnara.jp/'
+      slug: 'nara-deer-park'
     }
   ];
 
   const filtered = activeCat === t.categories.all ? tickets : tickets.filter(t => t.cat === activeCat);
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Ticket size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-serif dark:text-white">{t.ticketsTitle}</h3>
+              <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.ticketsSubtitle}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+            <X size={20} className="text-stone-400" />
+          </button>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+          {categories.map(cat => (
+            <button 
+              key={cat}
+              onClick={() => setActiveCat(cat)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                activeCat === cat 
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {filtered.map((ticket, i) => (
+            <div key={i} className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col">
+              <div className="relative h-40 overflow-hidden">
+                <img 
+                  src={ticket.image} 
+                  alt={ticket.name} 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 text-[10px] font-bold text-amber-500 shadow-sm">
+                  <Star size={10} fill="currentColor" />
+                  {ticket.rating}
+                </div>
+                <div className="absolute top-3 right-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-sm">
+                  {ticket.icon}
+                </div>
+              </div>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="mb-4">
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">{ticket.cat}</p>
+                  <h4 className="font-bold text-stone-900 dark:text-white text-sm line-clamp-1">{ticket.name}</h4>
+                </div>
+                <div className="flex items-center justify-between mt-auto gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-stone-400 uppercase font-bold">{t.priceFrom}</span>
+                    <span className="text-sm font-mono font-bold text-stone-900 dark:text-white">{ticket.price}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setQrTicket({ name: ticket.name, slug: ticket.slug })}
+                      className="w-10 h-10 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-emerald-500 hover:text-emerald-600 transition-colors flex items-center justify-center"
+                      title="QR"
+                    >
+                      <QrCode size={16} />
+                    </button>
+                    <button 
+                      onClick={() => openPartnerLink(ticket.slug)}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
+                    >
+                      {t.buyNow}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[9px] text-stone-400 text-center italic mt-8">{t.referencePriceNote}</p>
+      </motion.div>
+
+      <AnimatePresence>
+        {qrTicket && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setQrTicket(null)}
+              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="relative w-full max-w-sm bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl p-6 text-center shadow-2xl"
+            >
+              <button
+                onClick={() => setQrTicket(null)}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                <X size={18} className="text-stone-400" />
+              </button>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400 mb-1">Olachill Link</p>
+              <h4 className="font-bold text-stone-900 dark:text-white mb-4">{qrTicket.name}</h4>
+              <div className="w-56 h-56 mx-auto rounded-2xl bg-stone-50 dark:bg-stone-800 p-3 flex items-center justify-center border border-stone-100 dark:border-stone-700">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(getBrandedLink(qrTicket.slug))}`}
+                  alt={`${qrTicket.name} QR`}
+                  className="w-full h-full rounded-xl"
+                />
+              </div>
+              <p className="text-[11px] text-stone-400 mt-4">Quét QR để mở link thương hiệu của Olachill.</p>
+              <button
+                onClick={() => openPartnerLink(qrTicket.slug)}
+                className="mt-4 w-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
+              >
+                Mở Link
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+interface EsimPlan {
+  id: string;
+  name: string;
+  country: string;
+  data: string;
+  validityDays: number;
+  priceUsd: number;
+  currency: string;
+  checkoutUrl?: string;
+}
+
+const EsimShop = ({ onClose, language }: { onClose: () => void; language: Language }) => {
+  const copyByLang = {
+    vi: {
+      title: 'eSIM du lịch',
+      subtitle: 'Mua eSIM từ API nhà cung cấp thật',
+      reload: 'Tải lại',
+      buy: 'Mua eSIM',
+      loading: 'Đang tải gói eSIM...',
+      noPlans: 'Chưa có gói eSIM phù hợp.',
+      day: 'ngày',
+      sourceProvider: 'Nguồn: nhà cung cấp',
+      sourceFallback: 'Nguồn: fallback local',
+      checkoutMissing: 'Gói này chưa có link thanh toán từ nhà cung cấp.'
+    },
+    en: {
+      title: 'Travel eSIM',
+      subtitle: 'Plans from your real provider API',
+      reload: 'Reload',
+      buy: 'Buy eSIM',
+      loading: 'Loading eSIM plans...',
+      noPlans: 'No matching eSIM plans.',
+      day: 'days',
+      sourceProvider: 'Source: provider',
+      sourceFallback: 'Source: local fallback',
+      checkoutMissing: 'This plan does not include a checkout URL yet.'
+    },
+    ja: {
+      title: '旅行eSIM',
+      subtitle: '実プロバイダーAPIのプラン',
+      reload: '再読み込み',
+      buy: 'eSIMを購入',
+      loading: 'eSIMプランを読み込み中...',
+      noPlans: '利用可能なeSIMプランがありません。',
+      day: '日',
+      sourceProvider: 'ソース: プロバイダー',
+      sourceFallback: 'ソース: ローカルフォールバック',
+      checkoutMissing: 'このプランには決済URLがありません。'
+    }
+  } as const;
+
+  const copy = copyByLang[language];
+  const [plans, setPlans] = useState<EsimPlan[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [source, setSource] = useState<'provider' | 'local-fallback' | ''>('');
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+
+  const loadPlans = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/esim/plans?country=JP');
+      const json = await resp.json();
+      setPlans(Array.isArray(json?.plans) ? json.plans : []);
+      setSource(json?.source === 'provider' ? 'provider' : 'local-fallback');
+    } catch (e) {
+      console.error(e);
+      setPlans([]);
+      setSource('local-fallback');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPlans();
+  }, []);
+
+  const handleBuy = async (plan: EsimPlan) => {
+    if (plan.checkoutUrl) {
+      window.open(plan.checkoutUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    try {
+      setLoadingPlanId(plan.id);
+      const resp = await fetch('/api/esim/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: plan.id })
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        alert(json?.error || copy.checkoutMissing);
+        return;
+      }
+      if (json?.checkoutUrl) {
+        window.open(json.checkoutUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      alert(copy.checkoutMissing);
+    } catch (e) {
+      console.error(e);
+      alert(copy.checkoutMissing);
+    } finally {
+      setLoadingPlanId(null);
+    }
+  };
+
+  return (
+    <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <Ticket size={20} />
+          <div className="w-10 h-10 bg-teal-50 dark:bg-teal-900/20 rounded-xl flex items-center justify-center text-teal-600 dark:text-teal-400">
+            <Smartphone size={20} />
           </div>
           <div>
-            <h3 className="text-xl font-serif dark:text-white">{t.ticketsTitle}</h3>
-            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.ticketsSubtitle}</p>
+            <h3 className="text-xl font-serif dark:text-white">{copy.title}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{copy.subtitle}</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
-          <X size={20} className="text-stone-400" />
-        </button>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-        {categories.map(cat => (
-          <button 
-            key={cat}
-            onClick={() => setActiveCat(cat)}
-            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-              activeCat === cat 
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-200'
-            }`}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadPlans}
+            className="px-3 py-2 rounded-xl text-xs font-bold border border-stone-200 dark:border-stone-700 hover:border-teal-500/60 transition-colors"
           >
-            {cat}
+            {copy.reload}
           </button>
-        ))}
+          <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+            <X size={20} className="text-stone-400" />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {filtered.map((ticket, i) => (
-          <div key={i} className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col">
-            <div className="relative h-40 overflow-hidden">
-              <img 
-                src={ticket.image} 
-                alt={ticket.name} 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute top-3 left-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 text-[10px] font-bold text-amber-500 shadow-sm">
-                <Star size={10} fill="currentColor" />
-                {ticket.rating}
+      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-4">
+        {source === 'provider' ? copy.sourceProvider : copy.sourceFallback}
+      </p>
+
+      {loading ? (
+        <div className="py-20 text-center">
+          <Loader2 className="animate-spin mx-auto mb-3 text-teal-600" />
+          <p className="text-sm text-stone-500">{copy.loading}</p>
+        </div>
+      ) : plans.length === 0 ? (
+        <div className="py-20 text-center">
+          <p className="text-sm text-stone-500">{copy.noPlans}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {plans.map((plan) => (
+            <div key={plan.id} className="rounded-2xl border border-stone-100 dark:border-stone-700 p-5 bg-stone-50 dark:bg-stone-800/50">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-teal-600 dark:text-teal-400 mb-1">{plan.country}</p>
+              <h4 className="font-bold text-stone-900 dark:text-white">{plan.name}</h4>
+              <div className="mt-3 space-y-1 text-sm text-stone-500 dark:text-stone-400">
+                <p><span className="font-bold text-stone-700 dark:text-stone-200">{plan.data}</span></p>
+                <p>{plan.validityDays} {copy.day}</p>
+                <p className="font-mono font-bold text-stone-900 dark:text-white">${plan.priceUsd.toFixed(2)} {plan.currency}</p>
               </div>
-              <div className="absolute top-3 right-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-sm">
-                {ticket.icon}
-              </div>
+              <button
+                onClick={() => handleBuy(plan)}
+                disabled={loadingPlanId === plan.id}
+                className="mt-4 w-full bg-teal-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loadingPlanId === plan.id ? <Loader2 className="animate-spin w-4 h-4" /> : null}
+                {copy.buy}
+              </button>
             </div>
-            <div className="p-4 flex-1 flex flex-col">
-              <div className="mb-4">
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">{ticket.cat}</p>
-                <h4 className="font-bold text-stone-900 dark:text-white text-sm line-clamp-1">{ticket.name}</h4>
-              </div>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex flex-col">
-                  <span className="text-[9px] text-stone-400 uppercase font-bold">{t.priceFrom}</span>
-                  <span className="text-sm font-mono font-bold text-stone-900 dark:text-white">{ticket.price}</span>
-                </div>
-                <button 
-                  onClick={() => window.open(ticket.url, '_blank')}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
-                >
-                  {t.buyNow}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="text-[9px] text-stone-400 text-center italic mt-8">{t.referencePriceNote}</p>
+          ))}
+        </div>
+      )}
     </motion.div>
+  );
+};
+
+const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: Language }) => {
+  const copyByLang = {
+    vi: {
+      title: 'Nâng cấp gói',
+      subtitle: 'Mở khoá tính năng Pro và cổng thanh toán thương mại',
+      starter: 'Starter',
+      pro: 'Pro',
+      buy: 'Mở thanh toán',
+      featuresStarter: ['Tạo lịch trình tiêu chuẩn', 'Lưu lịch sử', 'Giới hạn vừa phải'],
+      featuresPro: ['Ưu tiên tốc độ', 'Mở rộng tiện ích Pro', 'Hỗ trợ tích hợp API đối tác'],
+      checkoutMissing: 'Chưa cấu hình link checkout. Hãy set VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL.',
+      payoutHint: 'Để nhận tiền: dùng Stripe/LemonSqueezy/Paddle, rồi gắn link checkout vào biến môi trường.'
+    },
+    en: {
+      title: 'Upgrade Plan',
+      subtitle: 'Unlock Pro features and commercial checkout flow',
+      starter: 'Starter',
+      pro: 'Pro',
+      buy: 'Open Checkout',
+      featuresStarter: ['Standard itinerary generation', 'Saved history', 'Moderate limits'],
+      featuresPro: ['Priority speed', 'Extended Pro utilities', 'Partner API integration support'],
+      checkoutMissing: 'Checkout URL is not configured. Set VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL.',
+      payoutHint: 'To receive money: connect Stripe/LemonSqueezy/Paddle, then map checkout URLs in env vars.'
+    },
+    ja: {
+      title: 'プランをアップグレード',
+      subtitle: 'Pro機能と商用決済フローを有効化',
+      starter: 'Starter',
+      pro: 'Pro',
+      buy: '決済を開く',
+      featuresStarter: ['標準の旅程生成', '履歴保存', '中程度の上限'],
+      featuresPro: ['優先レスポンス', 'Proユーティリティ拡張', '提携API連携サポート'],
+      checkoutMissing: 'チェックアウトURLが未設定です。VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL を設定してください。',
+      payoutHint: '売上受取には Stripe/LemonSqueezy/Paddle を接続し、env に checkout URL を設定してください。'
+    }
+  } as const;
+
+  const copy = copyByLang[language];
+  const basicCheckout = (import.meta as any).env?.VITE_CHECKOUT_BASIC_URL || '';
+  const proCheckout = (import.meta as any).env?.VITE_CHECKOUT_PRO_URL || '';
+
+  const openCheckout = (url: string) => {
+    if (!url) {
+      alert(copy.checkoutMissing);
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        className="relative w-full max-w-2xl bg-white dark:bg-stone-900 rounded-3xl border border-stone-100 dark:border-stone-800 p-8 shadow-2xl"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800"
+        >
+          <X size={18} className="text-stone-400" />
+        </button>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <Crown size={20} />
+          </div>
+          <h3 className="text-2xl font-serif dark:text-white">{copy.title}</h3>
+        </div>
+        <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">{copy.subtitle}</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-stone-100 dark:border-stone-700 p-5">
+            <h4 className="text-lg font-bold mb-2 dark:text-white">{copy.starter}</h4>
+            <p className="text-2xl font-mono font-bold mb-3">$9 / month</p>
+            <ul className="space-y-2 text-sm text-stone-500 dark:text-stone-400 mb-4">
+              {copy.featuresStarter.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => openCheckout(basicCheckout)}
+              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
+            >
+              {copy.buy}
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 p-5 bg-emerald-50/40 dark:bg-emerald-900/10">
+            <h4 className="text-lg font-bold mb-2 dark:text-white">{copy.pro}</h4>
+            <p className="text-2xl font-mono font-bold mb-3">$29 / month</p>
+            <ul className="space-y-2 text-sm text-stone-500 dark:text-stone-400 mb-4">
+              {copy.featuresPro.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => openCheckout(proCheckout)}
+              className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors"
+            >
+              {copy.buy}
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs text-stone-400 mt-6">{copy.payoutHint}</p>
+      </motion.div>
+    </div>
   );
 };
 
@@ -1367,7 +1739,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   // Suggested topics based on popular queries and AI strengths
   const suggestedTopics = t.suggestedTopics;
 
-  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'cafe' | 'secondhand' | 'personalization'>(null);
+  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'personalization' | 'esim'>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userPrefs, setUserPrefs] = useState<any>(null);
@@ -1686,6 +2059,14 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             <History size={20} />
             <span className="hidden sm:inline">{t.history}</span>
           </button>
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+            title={t.pricing}
+          >
+            <Crown size={18} />
+            <span className="hidden sm:inline">{t.pricing}</span>
+          </button>
           
           <button 
             onClick={toggleLanguage}
@@ -1896,6 +2277,13 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                         language={language}
                       />
                     )}
+                    {activeUtility === 'bus' && (
+                      <TrainSearch
+                        onClose={() => setActiveUtility(null)}
+                        language={language}
+                        initialMode="bus"
+                      />
+                    )}
                     {activeUtility === 'tickets' && (
                       <TicketSearch 
                         onClose={() => setActiveUtility(null)} 
@@ -1920,6 +2308,12 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                         language={language}
                         user={user}
                         currentPrefs={userPrefs}
+                      />
+                    )}
+                    {activeUtility === 'esim' && (
+                      <EsimShop
+                        onClose={() => setActiveUtility(null)}
+                        language={language}
                       />
                     )}
                   </div>
@@ -2239,6 +2633,12 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <UpgradeModal onClose={() => setShowUpgradeModal(false)} language={language} />
+        )}
+      </AnimatePresence>
+
       {/* Footer */}
       <footer className="bg-stone-50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 py-20 px-6">
         <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
@@ -2263,7 +2663,11 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             <h5 className="font-medium mb-6 dark:text-white">{t.product}</h5>
             <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
               <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.features}</a></li>
-              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.pricing}</a></li>
+              <li>
+                <button onClick={() => setShowUpgradeModal(true)} className="hover:text-stone-900 dark:hover:text-white">
+                  {t.pricing}
+                </button>
+              </li>
               <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.downloadApp}</a></li>
             </ul>
           </div>

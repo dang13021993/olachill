@@ -5,7 +5,7 @@ export interface SuggestedTopic {
   description: string;
   icon: string;
   query?: string;
-  utility?: 'train' | 'tickets' | 'cafe' | 'secondhand' | 'personalization';
+  utility?: 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'personalization' | 'esim';
 }
 
 export const translations = {
@@ -35,12 +35,14 @@ export const translations = {
     noSavedPlans: 'No itineraries saved yet.',
     localDataNote: 'Data is saved locally on your browser',
     trainSearchTitle: 'Train Route Search',
-    trainSearchSubtitle: 'Reference data from Navitime',
+    trainSearchSubtitle: 'Local timetable data (cost-saving)',
     from: 'From',
     to: 'To',
     date: 'Date',
     time: 'Time',
     searchRoute: 'Search Route',
+    transitTrain: 'Train',
+    transitBus: 'Bus',
     fromPlaceholder: 'Example: Tokyo, Shinjuku...',
     toPlaceholder: 'Example: Kyoto, Osaka...',
     resultsFor: 'Results for',
@@ -149,7 +151,9 @@ export const translations = {
     },
     suggestedTopics: [
       { text: 'Train Search', description: 'Check routes & prices', utility: 'train', icon: '🚄' },
+      { text: 'Bus Search', description: 'Find Japan highway buses', utility: 'bus', icon: '🚌' },
       { text: 'Sightseeing Tickets', description: 'Book Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
+      { text: 'eSIM Data', description: 'Buy Japan eSIM quickly', utility: 'esim', icon: '📶' },
       { text: 'Cafe & Restaurant', description: 'Find best places to eat', utility: 'cafe', icon: '☕' },
       { text: 'Second-hand Goods', description: 'Find used items & fashion', utility: 'secondhand', icon: '🛍️' },
       { text: 'Personalization', description: 'Set your travel preferences', utility: 'personalization', icon: '👤' },
@@ -186,12 +190,14 @@ export const translations = {
     noSavedPlans: '保存されたプランはまだありません。',
     localDataNote: 'データはブラウザにローカルに保存されます',
     trainSearchTitle: '乗換案内',
-    trainSearchSubtitle: 'Navitimeからの参考データ',
+    trainSearchSubtitle: 'ローカル時刻表データ（低コスト）',
     from: '出発地',
     to: '目的地',
     date: '日付',
     time: '時刻',
     searchRoute: 'ルート検索',
+    transitTrain: '電車',
+    transitBus: 'バス',
     fromPlaceholder: '例：東京、新宿...',
     toPlaceholder: '例：京都、大阪...',
     resultsFor: '検索結果：',
@@ -300,7 +306,9 @@ export const translations = {
     },
     suggestedTopics: [
       { text: '乗換案内', description: 'ルートと料金を確認', utility: 'train', icon: '🚄' },
+      { text: 'バス検索', description: '高速バスを探す', utility: 'bus', icon: '🚌' },
       { text: '観光チケット', description: 'ディズニー、USJなどを予約', utility: 'tickets', icon: '🎟️' },
+      { text: 'eSIMデータ', description: '日本のeSIMを購入', utility: 'esim', icon: '📶' },
       { text: 'カフェ＆レストラン', description: '最高の食事場所を探す', utility: 'cafe', icon: '☕' },
       { text: '中古品検索', description: '中古品やファッションを探す', utility: 'secondhand', icon: '🛍️' },
       { text: 'パーソナライズ', description: '旅行の好みを設定', utility: 'personalization', icon: '👤' },
@@ -337,12 +345,14 @@ export const translations = {
     noSavedPlans: 'Chưa có lịch trình nào được lưu.',
     localDataNote: 'Dữ liệu được lưu cục bộ trên trình duyệt của bạn',
     trainSearchTitle: 'Tra cứu lộ trình tàu',
-    trainSearchSubtitle: 'Dữ liệu tham khảo từ Navitime',
+    trainSearchSubtitle: 'Dữ liệu local tiết kiệm chi phí',
     from: 'Điểm đi',
     to: 'Điểm đến',
     date: 'Ngày đi',
     time: 'Giờ đi',
     searchRoute: 'Tìm kiếm lộ trình',
+    transitTrain: 'Tàu',
+    transitBus: 'Xe bus',
     fromPlaceholder: 'Ví dụ: Tokyo, Shinjuku...',
     toPlaceholder: 'Ví dụ: Kyoto, Osaka...',
     resultsFor: 'Kết quả cho',
@@ -451,7 +461,9 @@ export const translations = {
     },
     suggestedTopics: [
       { text: 'Tra tàu', description: 'Kiểm tra lộ trình & giá vé', utility: 'train', icon: '🚄' },
+      { text: 'Tra bus', description: 'Tìm xe bus đường dài Nhật', utility: 'bus', icon: '🚌' },
       { text: 'Vé tham quan', description: 'Đặt vé Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
+      { text: 'eSIM du lịch', description: 'Mua eSIM Nhật Bản nhanh', utility: 'esim', icon: '📶' },
       { text: 'Quán Cafe & Nhà hàng', description: 'Tìm địa điểm ăn uống tốt nhất', utility: 'cafe', icon: '☕' },
       { text: 'Tra cứu Đồ cũ', description: 'Tìm đồ dùng & thời trang cũ', utility: 'secondhand', icon: '🛍️' },
       { text: 'Cá nhân hóa', description: 'Thiết lập sở thích du lịch', utility: 'personalization', icon: '👤' },
