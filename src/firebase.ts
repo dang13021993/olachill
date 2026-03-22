@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -9,12 +9,41 @@ export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
+const MOBILE_UA_REGEX = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
+
+const shouldUseRedirectLogin = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const ua = window.navigator.userAgent.toLowerCase();
+  const isMobile = MOBILE_UA_REGEX.test(ua);
+  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || (window.navigator as any).standalone === true;
+  return isMobile || isStandalone;
+};
+
+const POPUP_FALLBACK_CODES = new Set([
+  'auth/popup-blocked',
+  'auth/popup-closed-by-user',
+  'auth/cancelled-popup-request',
+  'auth/operation-not-supported-in-this-environment'
+]);
+
 // Auth Helpers
 export const loginWithGoogle = async () => {
+  if (shouldUseRedirectLogin()) {
+    await signInWithRedirect(auth, googleProvider);
+    return null;
+  }
+
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error) {
+  } catch (error: any) {
+    const code = String(error?.code || '');
+    if (POPUP_FALLBACK_CODES.has(code)) {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     console.error("Login error:", error);
     throw error;
   }

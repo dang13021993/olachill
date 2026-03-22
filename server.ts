@@ -193,6 +193,14 @@ async function startServer() {
     res.json({ status: "ok", message: "VoyageAI Server is running" });
   });
 
+  // Public runtime config for client-side features that should not depend on Vite build-time env.
+  app.get("/api/public-config", (_req, res) => {
+    res.json({
+      checkoutBasicUrl: process.env.CHECKOUT_BASIC_URL || process.env.VITE_CHECKOUT_BASIC_URL || "",
+      checkoutProUrl: process.env.CHECKOUT_PRO_URL || process.env.VITE_CHECKOUT_PRO_URL || ""
+    });
+  });
+
   // Branded redirect route to keep affiliate URLs hidden from frontend/UI.
   app.get("/go/:slug", (req, res) => {
     const slug = String(req.params.slug || "").trim().toLowerCase();

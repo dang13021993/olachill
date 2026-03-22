@@ -1200,6 +1200,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
       starter: 'Starter',
       pro: 'Pro',
       buy: 'Mở thanh toán',
+      unavailable: 'Chưa cấu hình',
       featuresStarter: ['Tạo lịch trình tiêu chuẩn', 'Lưu lịch sử', 'Giới hạn vừa phải'],
       featuresPro: ['Ưu tiên tốc độ', 'Mở rộng tiện ích Pro', 'Hỗ trợ tích hợp API đối tác'],
       checkoutMissing: 'Chưa cấu hình link checkout. Hãy set VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL.',
@@ -1211,6 +1212,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
       starter: 'Starter',
       pro: 'Pro',
       buy: 'Open Checkout',
+      unavailable: 'Not Configured',
       featuresStarter: ['Standard itinerary generation', 'Saved history', 'Moderate limits'],
       featuresPro: ['Priority speed', 'Extended Pro utilities', 'Partner API integration support'],
       checkoutMissing: 'Checkout URL is not configured. Set VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL.',
@@ -1222,6 +1224,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
       starter: 'Starter',
       pro: 'Pro',
       buy: '決済を開く',
+      unavailable: '未設定',
       featuresStarter: ['標準の旅程生成', '履歴保存', '中程度の上限'],
       featuresPro: ['優先レスポンス', 'Proユーティリティ拡張', '提携API連携サポート'],
       checkoutMissing: 'チェックアウトURLが未設定です。VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL を設定してください。',
@@ -1230,12 +1233,41 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
   } as const;
 
   const copy = copyByLang[language];
-  const basicCheckout = (import.meta as any).env?.VITE_CHECKOUT_BASIC_URL || '';
-  const proCheckout = (import.meta as any).env?.VITE_CHECKOUT_PRO_URL || '';
+  const buildBasicCheckout = (import.meta as any).env?.VITE_CHECKOUT_BASIC_URL || '';
+  const buildProCheckout = (import.meta as any).env?.VITE_CHECKOUT_PRO_URL || '';
+  const [runtimeCheckout, setRuntimeCheckout] = useState<{ basic: string; pro: string }>({ basic: '', pro: '' });
+  const basicCheckout = runtimeCheckout.basic || buildBasicCheckout;
+  const proCheckout = runtimeCheckout.pro || buildProCheckout;
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/public-config')
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((json) => {
+        if (!active || !json) return;
+        setRuntimeCheckout({
+          basic: typeof json?.checkoutBasicUrl === 'string' ? json.checkoutBasicUrl : '',
+          pro: typeof json?.checkoutProUrl === 'string' ? json.checkoutProUrl : ''
+        });
+      })
+      .catch(() => {
+        // Ignore fetch errors and fallback to build-time env.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const openCheckout = (url: string) => {
     if (!url) {
       alert(copy.checkoutMissing);
+      return;
+    }
+    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+    const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
+    if (isMobile) {
+      window.location.href = url;
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -1284,9 +1316,10 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
             </ul>
             <button
               onClick={() => openCheckout(basicCheckout)}
-              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
+              disabled={!basicCheckout}
+              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {copy.buy}
+              {basicCheckout ? copy.buy : copy.unavailable}
             </button>
           </div>
 
@@ -1303,9 +1336,10 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
             </ul>
             <button
               onClick={() => openCheckout(proCheckout)}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors"
+              disabled={!proCheckout}
+              className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {copy.buy}
+              {proCheckout ? copy.buy : copy.unavailable}
             </button>
           </div>
         </div>
@@ -1745,6 +1779,38 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [authLoading, setAuthLoading] = useState(true);
   const [userPrefs, setUserPrefs] = useState<any>(null);
 
+  const getLoginErrorMessage = (error: any) => {
+    const code = String(error?.code || '');
+    if (language === 'vi') {
+      if (code === 'auth/unauthorized-domain') return 'Domain này chưa được bật trong Firebase Auth. Hãy thêm olachill.com vào Authorized domains.';
+      if (code === 'auth/operation-not-allowed') return 'Google Sign-In chưa bật trong Firebase Authentication.';
+      if (code === 'auth/invalid-api-key') return 'Firebase API key không hợp lệ.';
+      if (code === 'auth/network-request-failed') return 'Lỗi mạng khi đăng nhập. Vui lòng thử lại.';
+      return 'Đăng nhập thất bại. Vui lòng thử lại.';
+    }
+    if (language === 'ja') {
+      if (code === 'auth/unauthorized-domain') return 'Firebase Auth の許可ドメインにこのドメインが未登録です。olachill.com を追加してください。';
+      if (code === 'auth/operation-not-allowed') return 'Firebase Authentication で Google ログインが有効化されていません。';
+      if (code === 'auth/invalid-api-key') return 'Firebase API キーが無効です。';
+      if (code === 'auth/network-request-failed') return 'ネットワークエラーのためログインできません。';
+      return 'ログインに失敗しました。再試行してください。';
+    }
+    if (code === 'auth/unauthorized-domain') return 'This domain is not authorized in Firebase Auth. Add olachill.com to Authorized domains.';
+    if (code === 'auth/operation-not-allowed') return 'Google Sign-In is not enabled in Firebase Authentication.';
+    if (code === 'auth/invalid-api-key') return 'Invalid Firebase API key.';
+    if (code === 'auth/network-request-failed') return 'Network error while signing in. Please try again.';
+    return 'Login failed. Please try again.';
+  };
+
+  const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert(getLoginErrorMessage(error));
+    }
+  };
+
   // Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -2116,7 +2182,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             </div>
           ) : (
             <button 
-              onClick={loginWithGoogle}
+              onClick={handleLogin}
               className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
             >
               <User size={18} />
