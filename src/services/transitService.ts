@@ -26,17 +26,69 @@ const CITY_ALIASES: Record<string, string> = {
   asakusa: "Tokyo",
   shinagawa: "Tokyo",
   ikebukuro: "Tokyo",
+  akihabara: "Tokyo",
+  ginza: "Tokyo",
+  roppongi: "Tokyo",
+  harajuku: "Tokyo",
+  omotesando: "Tokyo",
+  ebisu: "Tokyo",
+  nakano: "Tokyo",
+  kichijoji: "Tokyo",
+  shimokitazawa: "Tokyo",
+  hachioji: "Tokyo",
+  tachikawa: "Tokyo",
   yokohama: "Yokohama",
+  sakuragicho: "Yokohama",
+  "minato-mirai": "Yokohama",
+  "shin-yokohama": "Yokohama",
+  motomachi: "Yokohama",
+  "motomachi-chukagai": "Yokohama",
   osaka: "Osaka",
   "shin-osaka": "Osaka",
   umeda: "Osaka",
   namba: "Osaka",
+  tennoji: "Osaka",
+  kyobashi: "Osaka",
+  yodoyabashi: "Osaka",
+  shinsaibashi: "Osaka",
+  nipponbashi: "Osaka",
   kyoto: "Kyoto",
+  "gion-shijo": "Kyoto",
+  kawaramachi: "Kyoto",
+  arashiyama: "Kyoto",
+  "fushimi-inari": "Kyoto",
+  "kiyomizu-gojo": "Kyoto",
   nagoya: "Nagoya",
+  kanayama: "Nagoya",
+  sakae: "Nagoya",
+  "osu-kannon": "Nagoya",
+  "nagoya-ko": "Nagoya",
+  fujigaoka: "Nagoya",
   nara: "Nara",
+  "kintetsu-nara": "Nara",
   kobe: "Kobe",
+  sannomiya: "Kobe",
+  motomachikobe: "Kobe",
+  "shin-kobe": "Kobe",
   hakone: "Hakone",
+  "hakone-yumoto": "Hakone",
+  gora: "Hakone",
+  togendai: "Hakone",
   kawaguchiko: "Kawaguchiko",
+  fujisan: "Kawaguchiko",
+  hakata: "Fukuoka",
+  tenjin: "Fukuoka",
+  "nakasu-kawabata": "Fukuoka",
+  "fukuoka-airport": "Fukuoka",
+  odori: "Sapporo",
+  susukino: "Sapporo",
+  miyajimaguchi: "Hiroshima",
+  hatchobori: "Hiroshima",
+  nikko: "Nikko",
+  "tobu-nikko": "Nikko",
+  kamakura: "Kamakura",
+  hase: "Kamakura",
+  "kita-kamakura": "Kamakura",
   sapporo: "Sapporo",
   fukuoka: "Fukuoka",
   hiroshima: "Hiroshima"
@@ -134,7 +186,13 @@ const BUS_TEMPLATES: Record<string, TransitTemplate[]> = {
 };
 
 function canonicalizeCity(rawInput: string): string | null {
-  const normalized = rawInput.trim().toLowerCase().replace(/\s+/g, "-");
+  const normalized = rawInput
+    .trim()
+    .toLowerCase()
+    .replace(/station$/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
   if (!normalized) {
     return null;
   }
@@ -145,7 +203,8 @@ function canonicalizeCity(rawInput: string): string | null {
 
   const compact = normalized.replace(/-/g, "");
   for (const [alias, city] of Object.entries(CITY_ALIASES)) {
-    if (alias.replace(/-/g, "") === compact) {
+    const aliasCompact = alias.replace(/-/g, "");
+    if (aliasCompact === compact || compact.includes(aliasCompact) || aliasCompact.includes(compact)) {
       return city;
     }
   }
@@ -184,24 +243,48 @@ function toDurationLabel(totalMinutes: number): string {
   return `${h}h ${m}m`;
 }
 
-export function searchTransitLocal(
-  fromRaw: string,
-  toRaw: string,
-  time: string,
-  mode: TransitMode = "train"
-): TransitResult[] {
-  const from = canonicalizeCity(fromRaw);
-  const to = canonicalizeCity(toRaw);
-  if (!from || !to || from === to) {
-    return [];
+function buildIntraCityTemplates(mode: TransitMode): TransitTemplate[] {
+  if (mode === "train") {
+    return [
+      { label: "JR Local", durationMin: 22, priceJPY: 220, changes: 0 },
+      { label: "Metro + Local", durationMin: 31, priceJPY: 290, changes: 1 },
+      { label: "Rapid + Walk", durationMin: 27, priceJPY: 350, changes: 1 }
+    ];
+  }
+  return [
+    { label: "City Bus Direct", durationMin: 35, priceJPY: 230, changes: 0 },
+    { label: "Bus + Transfer", durationMin: 46, priceJPY: 310, changes: 1 },
+    { label: "Local Bus", durationMin: 52, priceJPY: 280, changes: 1 }
+  ];
+}
+
+function buildFallbackTemplates(from: string, to: string, mode: TransitMode): TransitTemplate[] {
+  const seed =
+    Math.abs(from.charCodeAt(0) - to.charCodeAt(0)) +
+    Math.abs(from.length - to.length) * 9 +
+    Math.abs(from.charCodeAt(from.length - 1) - to.charCodeAt(to.length - 1));
+
+  const base = mode === "train" ? 85 : 120;
+  const duration = base + (seed % (mode === "train" ? 95 : 140));
+  const priceBase = mode === "train" ? 2100 : 1400;
+  const price = priceBase + (seed % (mode === "train" ? 4300 : 2600));
+
+  if (mode === "train") {
+    return [
+      { label: "JR Limited Express", durationMin: duration, priceJPY: price, changes: 0 },
+      { label: "JR + Transfer", durationMin: duration + 20, priceJPY: Math.max(890, price - 320), changes: 1 },
+      { label: "Local + Rapid", durationMin: duration + 45, priceJPY: Math.max(760, price - 650), changes: 2 }
+    ];
   }
 
-  const key = routeKey(from, to);
-  const templates = mode === "train" ? TRAIN_TEMPLATES[key] : BUS_TEMPLATES[key];
-  if (!templates || templates.length === 0) {
-    return [];
-  }
+  return [
+    { label: "Highway Bus", durationMin: duration + 35, priceJPY: price, changes: 0 },
+    { label: "Express Bus", durationMin: duration + 20, priceJPY: Math.max(650, price - 220), changes: 0 },
+    { label: "Bus + Local", durationMin: duration + 55, priceJPY: Math.max(590, price - 380), changes: 1 }
+  ];
+}
 
+function buildResultsFromTemplates(templates: TransitTemplate[], time: string, mode: TransitMode): TransitResult[] {
   const baseMinute = parseTimeToMinutes(time);
   const spacing = mode === "train" ? 12 : 20;
 
@@ -219,4 +302,27 @@ export function searchTransitLocal(
       source: "local"
     };
   });
+}
+
+export function searchTransitLocal(
+  fromRaw: string,
+  toRaw: string,
+  time: string,
+  mode: TransitMode = "train"
+): TransitResult[] {
+  const from = canonicalizeCity(fromRaw);
+  const to = canonicalizeCity(toRaw);
+  if (!from || !to) {
+    return [];
+  }
+
+  if (from === to) {
+    return buildResultsFromTemplates(buildIntraCityTemplates(mode), time, mode);
+  }
+
+  const key = routeKey(from, to);
+  const routeTemplates = mode === "train" ? TRAIN_TEMPLATES[key] : BUS_TEMPLATES[key];
+  const templates = routeTemplates && routeTemplates.length > 0 ? routeTemplates : buildFallbackTemplates(from, to, mode);
+
+  return buildResultsFromTemplates(templates, time, mode);
 }

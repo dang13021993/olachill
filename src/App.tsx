@@ -191,6 +191,26 @@ const TrainSearch = ({
   initialMode?: TransitMode
 }) => {
   const t = translations[language];
+  const modeCopyByLang = {
+    vi: {
+      trainTitle: t.trainSearchTitle,
+      trainSubtitle: t.trainSearchSubtitle,
+      busTitle: 'Tra cứu tuyến xe bus',
+      busSubtitle: 'Dữ liệu xe bus local tiết kiệm chi phí'
+    },
+    en: {
+      trainTitle: t.trainSearchTitle,
+      trainSubtitle: t.trainSearchSubtitle,
+      busTitle: 'Bus Route Search',
+      busSubtitle: 'Local bus timetable data (cost-saving)'
+    },
+    ja: {
+      trainTitle: t.trainSearchTitle,
+      trainSubtitle: t.trainSearchSubtitle,
+      busTitle: 'バス路線検索',
+      busSubtitle: 'ローカルバス時刻表データ（低コスト）'
+    }
+  } as const;
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -201,6 +221,13 @@ const TrainSearch = ({
   const [toSuggestions, setToSuggestions] = useState<string[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const modeCopy = modeCopyByLang[language];
+
+  useEffect(() => {
+    setMode(initialMode);
+    setShowResults(false);
+    setResults([]);
+  }, [initialMode]);
 
   const getSuggestions = (val: string) => {
     if (val.length === 0) return [];
@@ -247,11 +274,11 @@ const TrainSearch = ({
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <Plus size={20} />
+            <span className="text-lg">{mode === 'train' ? '🚄' : '🚌'}</span>
           </div>
           <div>
-            <h3 className="text-xl font-serif dark:text-white">{t.trainSearchTitle}</h3>
-            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.trainSearchSubtitle}</p>
+            <h3 className="text-xl font-serif dark:text-white">{mode === 'train' ? modeCopy.trainTitle : modeCopy.busTitle}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{mode === 'train' ? modeCopy.trainSubtitle : modeCopy.busSubtitle}</p>
           </div>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
