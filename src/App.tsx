@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Compass, 
+  Menu,
   MapPin, 
   Calendar, 
   Clock, 
@@ -1757,6 +1758,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [prompt, setPrompt] = useState('');
   const [headerSearch, setHeaderSearch] = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
@@ -1767,6 +1769,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     { code: 'en', label: 'English' },
     { code: 'ja', label: '日本語' }
   ];
+  const mobileMenuVersionLabel = 'V1.1.3-JP';
+  const aboutLabel = language === 'vi' ? 'Giới thiệu' : language === 'ja' ? '紹介' : 'About';
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -1912,6 +1916,13 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     if (messages.length > 0 && confirm(t.confirmNewChat)) {
       setMessages([]);
     }
+  };
+
+  const scrollToSectionFromMenu = (id: string) => {
+    setShowMobileMenu(false);
+    window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 140);
   };
 
   useEffect(() => {
@@ -2070,12 +2081,22 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   return (
     <div className="min-h-screen bg-[#FDFCFB] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col transition-colors duration-300">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-900 dark:to-stone-800 rounded-xl flex items-center justify-center border border-emerald-100 dark:border-stone-700 p-1.5">
+      <nav className="fixed top-0 left-0 right-0 h-20 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-4 md:px-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            onClick={() => setShowMobileMenu(true)}
+            className="md:hidden p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
+            title="Menu"
+          >
+            <Menu size={22} />
+          </button>
+          <div className="w-11 h-11 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-900 dark:to-stone-800 rounded-2xl flex items-center justify-center border border-emerald-100 dark:border-stone-700 p-1.5 shadow-sm">
             <OlachillLogo className="w-full h-full" />
           </div>
-          <span className="font-serif italic text-2xl tracking-tight dark:text-white">{t.appName}</span>
+          <span className="hidden md:inline font-serif italic text-2xl tracking-tight dark:text-white">{t.appName}</span>
+          <span className="md:hidden inline-flex items-center px-3 py-1 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-black tracking-wide border border-emerald-200">
+            NEW
+          </span>
         </div>
 
         {/* Header Search Bar */}
@@ -2101,141 +2122,253 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
           </form>
         </div>
         
-        <div className="flex items-center gap-2">
-          {/* Mobile Search Toggle */}
-          <button 
-            onClick={() => setShowMobileSearch(!showMobileSearch)}
-            className="md:hidden p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
-          >
-            {showMobileSearch ? <X size={20} /> : <Search size={20} />}
-          </button>
-
-          {messages.length > 0 && (
-            <>
-              <button 
-                onClick={saveCurrentSession}
-                className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
-                title={t.save}
-              >
-                <Save size={20} />
-                <span className="hidden sm:inline">{t.save}</span>
-              </button>
-              <button 
-                onClick={clearChat}
-                className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
-                title={t.newChat}
-              >
-                <Plus size={20} />
-                <span className="hidden sm:inline">{t.newChat}</span>
-              </button>
-            </>
-          )}
-          <button 
-            onClick={() => setShowSavedPlans(true)}
-            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
-            title={t.history}
-          >
-            <History size={20} />
-            <span className="hidden sm:inline">{t.history}</span>
-          </button>
-          <button
-            onClick={() => setShowUpgradeModal(true)}
-            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
-            title={t.pricing}
-          >
-            <Crown size={18} />
-            <span className="hidden sm:inline">{t.pricing}</span>
-          </button>
-
-          <div className="relative">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className="md:hidden flex items-center gap-1">
             <button
-              onClick={() => setShowLanguageMenu((prev) => !prev)}
-              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors font-bold text-xs uppercase border border-stone-200 dark:border-stone-800"
-              title="Language"
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
+              title={t.searchPlaceholder}
             >
-              {language}
+              {showMobileSearch ? <X size={20} /> : <Search size={20} />}
             </button>
-
-            <AnimatePresence>
-              {showLanguageMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                  className="absolute right-0 mt-2 w-[240px] bg-white/95 dark:bg-stone-900/95 border border-stone-200 dark:border-stone-800 rounded-2xl p-2 shadow-2xl backdrop-blur-md z-[60]"
-                >
-                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {languageOptions.map((item) => (
-                      <button
-                        key={item.code}
-                        onClick={() => {
-                          setLanguage(item.code);
-                          setShowLanguageMenu(false);
-                        }}
-                        className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                          language === item.code
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <button
+              onClick={saveCurrentSession}
+              disabled={messages.length === 0}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title={t.save}
+            >
+              <Save size={20} />
+            </button>
+            <button
+              onClick={clearChat}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
+              title={t.newChat}
+            >
+              <Plus size={20} />
+            </button>
           </div>
 
-          <button 
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
-          >
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-          </button>
-
-          {/* Login/Logout Button */}
-          {user && userPrefs && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/50 mr-2">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                {t.personalization.welcomeBack.replace('{name}', user.displayName?.split(' ')[0] || 'Traveler')}
-              </span>
-            </div>
-          )}
-          {authLoading ? (
-            <div className="w-10 h-10 flex items-center justify-center">
-              <Loader2 className="animate-spin text-stone-400" size={20} />
-            </div>
-          ) : user ? (
-            <div className="flex items-center gap-3 pl-2 border-l border-stone-100 dark:border-stone-800">
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">5 lượt/ngày</span>
+          <div className="hidden md:flex items-center gap-2">
+            {messages.length > 0 && (
+              <>
                 <button 
-                  onClick={logout}
-                  className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors uppercase tracking-wider"
+                  onClick={saveCurrentSession}
+                  className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+                  title={t.save}
                 >
-                  {t.logout}
+                  <Save size={20} />
+                  <span className="hidden sm:inline">{t.save}</span>
                 </button>
-              </div>
-              <img 
-                src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`} 
-                alt={user.displayName || 'User'} 
-                className="w-8 h-8 rounded-full border border-stone-200 dark:border-stone-700"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          ) : (
+                <button 
+                  onClick={clearChat}
+                  className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+                  title={t.newChat}
+                >
+                  <Plus size={20} />
+                  <span className="hidden sm:inline">{t.newChat}</span>
+                </button>
+              </>
+            )}
             <button 
-              onClick={handleLogin}
-              className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+              onClick={() => setShowSavedPlans(true)}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+              title={t.history}
             >
-              <User size={18} />
-              <span>{t.login}</span>
+              <History size={20} />
+              <span className="hidden sm:inline">{t.history}</span>
             </button>
-          )}
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors flex items-center gap-2 text-sm"
+              title={t.pricing}
+            >
+              <Crown size={18} />
+              <span className="hidden sm:inline">{t.pricing}</span>
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowLanguageMenu((prev) => !prev)}
+                className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors font-bold text-xs uppercase border border-stone-200 dark:border-stone-800"
+                title="Language"
+              >
+                {language}
+              </button>
+
+              <AnimatePresence>
+                {showLanguageMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    className="absolute right-0 mt-2 w-[240px] bg-white/95 dark:bg-stone-900/95 border border-stone-200 dark:border-stone-800 rounded-2xl p-2 shadow-2xl backdrop-blur-md z-[60]"
+                  >
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      {languageOptions.map((item) => (
+                        <button
+                          key={item.code}
+                          onClick={() => {
+                            setLanguage(item.code);
+                            setShowLanguageMenu(false);
+                          }}
+                          className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                            language === item.code
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <button 
+              onClick={toggleTheme}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+
+            {user && userPrefs && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/50 mr-2">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                  {t.personalization.welcomeBack.replace('{name}', user.displayName?.split(' ')[0] || 'Traveler')}
+                </span>
+              </div>
+            )}
+            {authLoading ? (
+              <div className="w-10 h-10 flex items-center justify-center">
+                <Loader2 className="animate-spin text-stone-400" size={20} />
+              </div>
+            ) : user ? (
+              <div className="flex items-center gap-3 pl-2 border-l border-stone-100 dark:border-stone-800">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">5 lượt/ngày</span>
+                  <button 
+                    onClick={logout}
+                    className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors uppercase tracking-wider"
+                  >
+                    {t.logout}
+                  </button>
+                </div>
+                <img 
+                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`} 
+                  alt={user.displayName || 'User'} 
+                  className="w-8 h-8 rounded-full border border-stone-200 dark:border-stone-700"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+              >
+                <User size={18} />
+                <span>{t.login}</span>
+              </button>
+            )}
+          </div>
         </div>
       </nav>
+
+      {/* Mobile Sidebar Menu */}
+      <AnimatePresence>
+        {showMobileMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileMenu(false)}
+              className="fixed inset-0 bg-black/25 backdrop-blur-[2px] z-[55] md:hidden"
+            />
+            <motion.aside
+              initial={{ x: -360, opacity: 0.9 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -360, opacity: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed top-0 left-0 bottom-0 w-[92vw] max-w-[360px] bg-white dark:bg-stone-900 z-[60] md:hidden border-r border-stone-200 dark:border-stone-800 flex flex-col"
+            >
+              <div className="p-6 border-b border-stone-100 dark:border-stone-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-800 dark:to-stone-700 border border-emerald-100 dark:border-stone-700 p-2 shadow-sm">
+                      <OlachillLogo className="w-full h-full" />
+                    </div>
+                    <div className="font-serif italic text-4xl leading-none text-stone-900 dark:text-white">{t.appName}</div>
+                  </div>
+                  <button
+                    onClick={() => setShowMobileMenu(false)}
+                    className="p-2 rounded-xl text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                  >
+                    <X size={26} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+                <span className="text-sm font-black tracking-wide text-stone-400 dark:text-stone-500">{mobileMenuVersionLabel}</span>
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false);
+                    window.open('https://olachill.com', '_blank', 'noopener,noreferrer');
+                  }}
+                  className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline"
+                >
+                  Visit olachill.com
+                  <ExternalLink size={16} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-8">
+                <div className="mb-8">
+                  <p className="text-xs font-black tracking-[0.28em] text-stone-400 dark:text-stone-500 uppercase mb-6">{t.product}</p>
+                  <div className="space-y-3">
+                    <button onClick={() => scrollToSectionFromMenu('footer-product')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.features}</button>
+                    <button
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        setShowUpgradeModal(true);
+                      }}
+                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                    >
+                      {t.pricing}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        window.open('https://olachill.com', '_blank', 'noopener,noreferrer');
+                      }}
+                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                    >
+                      {t.downloadApp}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-black tracking-[0.28em] text-stone-400 dark:text-stone-500 uppercase mb-6">{t.support}</p>
+                  <div className="space-y-3">
+                    <button onClick={() => scrollToSectionFromMenu('footer-support')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.helpCenter}</button>
+                    <button onClick={() => scrollToSectionFromMenu('footer-about')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{aboutLabel}</button>
+                    <button onClick={() => scrollToSectionFromMenu('footer-support')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.contact}</button>
+                    <button onClick={() => scrollToSectionFromMenu('footer-support')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.terms}</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-stone-100 dark:border-stone-800 px-6 py-5">
+                <p className="text-center text-sm text-stone-400 dark:text-stone-500">© 2026 {t.appName}. {t.allRightsReserved}</p>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Search Overlay */}
       <AnimatePresence>
@@ -2753,7 +2886,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       {/* Footer */}
       <footer className="bg-stone-50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 py-20 px-6">
         <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
-          <div className="col-span-2">
+          <div id="footer-about" className="col-span-2">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-8 h-8 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-800 dark:to-stone-700 rounded-lg border border-emerald-100 dark:border-stone-700 p-1">
                 <OlachillLogo className="w-full h-full" />
@@ -2772,7 +2905,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               Visit olachill.com
             </a>
           </div>
-          <div>
+          <div id="footer-product">
             <h5 className="font-medium mb-6 dark:text-white">{t.product}</h5>
             <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
               <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.features}</a></li>
@@ -2784,7 +2917,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.downloadApp}</a></li>
             </ul>
           </div>
-          <div>
+          <div id="footer-support">
             <h5 className="font-medium mb-6 dark:text-white">{t.support}</h5>
             <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
               <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.helpCenter}</a></li>

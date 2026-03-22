@@ -10,7 +10,7 @@ export interface SuggestedTopic {
 
 export const translations = {
   en: {
-    appName: 'JapanAI',
+    appName: 'Olachill',
     splashMessage: 'Preparing your journey...',
     login: 'Login',
     logout: 'Logout',
@@ -165,7 +165,7 @@ export const translations = {
     ]
   },
   ja: {
-    appName: 'JapanAI',
+    appName: 'Olachill',
     splashMessage: '旅の準備をしています...',
     login: 'ログイン',
     logout: 'ログアウト',
@@ -320,7 +320,7 @@ export const translations = {
     ]
   },
   vi: {
-    appName: 'JapanAI',
+    appName: 'Olachill',
     splashMessage: 'Đang chuẩn bị hành trang cho chuyến đi của bạn...',
     login: 'Đăng nhập',
     logout: 'Thoát',
