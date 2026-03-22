@@ -74,15 +74,28 @@ interface SavedSession {
 
 // --- Components ---
 
+const OlachillLogo = ({ className = '' }: { className?: string }) => (
+  <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
+    <rect x="3" y="3" width="58" height="58" rx="18" fill="#0F172A" />
+    <rect x="8" y="8" width="48" height="22" rx="10" fill="#4FA9E8" />
+    <path d="M8 43C14 34 22 30 32 30C42 30 50 34 56 43V56H8V43Z" fill="#73C95E" />
+    <path d="M8 49C15 42 23 39 32 39C41 39 49 42 56 49V56H8V49Z" fill="#4BAF4D" />
+    <path d="M20 28C20 20.2 25.5 15 32 15C38.5 15 44 20.2 44 28H20Z" fill="#111827" />
+    <path d="M32 28V39.5" stroke="#E5E7EB" strokeWidth="2.6" strokeLinecap="round" />
+    <path d="M32 39.5C32 42.2 30.4 44 27.8 44.1" stroke="#E5E7EB" strokeWidth="2.6" strokeLinecap="round" />
+    <path d="M25 19.5L31 14L40.5 16.4L34.2 24.4L25 19.5Z" fill="#75A92E" stroke="#3F6212" strokeWidth="1.4" />
+  </svg>
+);
+
 const SplashScreen = ({ language }: { language: Language }) => (
   <div className="fixed inset-0 bg-white dark:bg-stone-950 z-[200] flex flex-col items-center justify-center p-6 text-center">
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="w-24 h-24 bg-stone-900 dark:bg-stone-100 rounded-[32px] flex items-center justify-center mb-8 shadow-2xl"
+      className="w-24 h-24 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-900 dark:to-stone-800 rounded-[32px] flex items-center justify-center mb-8 shadow-2xl border border-emerald-100 dark:border-stone-700 p-2"
     >
-      <Compass className="text-white dark:text-stone-900 w-12 h-12 animate-pulse" />
+      <OlachillLogo className="w-full h-full animate-pulse" />
     </motion.div>
     <h1 className="text-4xl font-serif italic mb-4 dark:text-white">{translations[language].appName}</h1>
     <p className="text-stone-400 dark:text-stone-500 max-w-xs leading-relaxed">
@@ -2059,8 +2072,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-stone-900 dark:bg-stone-100 rounded-xl flex items-center justify-center">
-            <Compass className="text-white dark:text-stone-900 w-6 h-6" />
+          <div className="w-10 h-10 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-900 dark:to-stone-800 rounded-xl flex items-center justify-center border border-emerald-100 dark:border-stone-700 p-1.5">
+            <OlachillLogo className="w-full h-full" />
           </div>
           <span className="font-serif italic text-2xl tracking-tight dark:text-white">{t.appName}</span>
         </div>
@@ -2742,8 +2755,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <Compass className="text-stone-900 dark:text-white w-6 h-6" />
-              <span className="font-serif italic text-2xl tracking-tight dark:text-white">JapanAI</span>
+              <div className="w-8 h-8 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-800 dark:to-stone-700 rounded-lg border border-emerald-100 dark:border-stone-700 p-1">
+                <OlachillLogo className="w-full h-full" />
+              </div>
+              <span className="font-serif italic text-2xl tracking-tight dark:text-white">{t.appName}</span>
             </div>
             <p className="text-stone-400 dark:text-stone-500 text-sm max-w-xs leading-relaxed">
               {t.footerDescription}
@@ -2779,7 +2794,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-stone-200 dark:border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-stone-400 dark:text-stone-500">© 2026 JapanAI. {t.allRightsReserved}</p>
+          <p className="text-xs text-stone-400 dark:text-stone-500">© 2026 {t.appName}. {t.allRightsReserved}</p>
         </div>
       </footer>
     </div>
