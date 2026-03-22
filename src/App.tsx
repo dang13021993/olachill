@@ -11,6 +11,7 @@ import {
   ChevronRight, 
   Info, 
   CheckCircle2, 
+  ChevronLeft,
   X,
   Send,
   Search,
@@ -35,7 +36,9 @@ import {
   PartyPopper,
   QrCode,
   Crown,
-  Smartphone
+  Smartphone,
+  CreditCard,
+  Landmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -1040,43 +1043,78 @@ interface EsimPlan {
   checkoutUrl?: string;
 }
 
+type EsimPaymentMethod = 'stripe' | 'paypal' | 'bank_transfer';
+
 const EsimShop = ({ onClose, language }: { onClose: () => void; language: Language }) => {
   const copyByLang = {
     vi: {
       title: 'eSIM du lịch',
       subtitle: 'Mua eSIM từ API nhà cung cấp thật',
       reload: 'Tải lại',
-      buy: 'Mua eSIM',
+      buy: 'Chọn thanh toán',
       loading: 'Đang tải gói eSIM...',
       noPlans: 'Chưa có gói eSIM phù hợp.',
       day: 'ngày',
       sourceProvider: 'Nguồn: nhà cung cấp',
       sourceFallback: 'Nguồn: fallback local',
-      checkoutMissing: 'Gói này chưa có link thanh toán từ nhà cung cấp.'
+      checkoutMissing: 'Gói này chưa có link thanh toán từ nhà cung cấp.',
+      paymentTitle: 'Phương thức thanh toán',
+      paymentSubtitle: 'Chọn phương thức thanh toán phù hợp',
+      totalAmount: 'Tổng số tiền',
+      packageLabel: 'Gói',
+      selectMethod: 'Chọn phương thức thanh toán',
+      methodStripe: 'Stripe (Card/Apple Pay)',
+      methodPaypal: 'PayPal',
+      methodBank: 'Chuyển khoản ngân hàng (Nhật Bản)',
+      payNow: 'Thanh toán ngay',
+      processing: 'Đang tạo đơn...',
+      estimatedLabel: 'Ước tính'
     },
     en: {
       title: 'Travel eSIM',
       subtitle: 'Plans from your real provider API',
       reload: 'Reload',
-      buy: 'Buy eSIM',
+      buy: 'Choose Payment',
       loading: 'Loading eSIM plans...',
       noPlans: 'No matching eSIM plans.',
       day: 'days',
       sourceProvider: 'Source: provider',
       sourceFallback: 'Source: local fallback',
-      checkoutMissing: 'This plan does not include a checkout URL yet.'
+      checkoutMissing: 'This plan does not include a checkout URL yet.',
+      paymentTitle: 'Payment Method',
+      paymentSubtitle: 'Choose the payment option that fits',
+      totalAmount: 'Total Amount',
+      packageLabel: 'Package',
+      selectMethod: 'Choose payment method',
+      methodStripe: 'Stripe (Card/Apple Pay)',
+      methodPaypal: 'PayPal',
+      methodBank: 'Bank Transfer (Japan)',
+      payNow: 'Pay Now',
+      processing: 'Creating order...',
+      estimatedLabel: 'Estimated'
     },
     ja: {
       title: '旅行eSIM',
       subtitle: '実プロバイダーAPIのプラン',
       reload: '再読み込み',
-      buy: 'eSIMを購入',
+      buy: '決済方法を選ぶ',
       loading: 'eSIMプランを読み込み中...',
       noPlans: '利用可能なeSIMプランがありません。',
       day: '日',
       sourceProvider: 'ソース: プロバイダー',
       sourceFallback: 'ソース: ローカルフォールバック',
-      checkoutMissing: 'このプランには決済URLがありません。'
+      checkoutMissing: 'このプランには決済URLがありません。',
+      paymentTitle: 'お支払い方法',
+      paymentSubtitle: '最適なお支払い方法を選択',
+      totalAmount: '合計金額',
+      packageLabel: 'プラン',
+      selectMethod: '支払い方法を選択',
+      methodStripe: 'Stripe (カード/Apple Pay)',
+      methodPaypal: 'PayPal',
+      methodBank: '銀行振込（日本）',
+      payNow: '今すぐ支払う',
+      processing: '注文を作成中...',
+      estimatedLabel: '概算'
     }
   } as const;
 
@@ -1085,6 +1123,24 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<'provider' | 'local-fallback' | ''>('');
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<EsimPlan | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<EsimPaymentMethod>('bank_transfer');
+
+  const paymentMethods: { key: EsimPaymentMethod; label: string; icon: React.ReactNode }[] = [
+    { key: 'stripe', label: copy.methodStripe, icon: <CreditCard size={20} /> },
+    { key: 'paypal', label: copy.methodPaypal, icon: <CreditCard size={20} /> },
+    { key: 'bank_transfer', label: copy.methodBank, icon: <Landmark size={20} /> }
+  ];
+
+  const toJpy = (plan: EsimPlan) => {
+    if (plan.currency.toUpperCase() === 'JPY') return Math.round(plan.priceUsd);
+    return Math.round(plan.priceUsd * 150);
+  };
+
+  const formatNumber = (value: number) => {
+    const locale = language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US';
+    return new Intl.NumberFormat(locale).format(value);
+  };
 
   const loadPlans = async () => {
     setLoading(true);
@@ -1106,10 +1162,25 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
     loadPlans();
   }, []);
 
-  const handleBuy = async (plan: EsimPlan) => {
-    if (plan.checkoutUrl) {
-      window.open(plan.checkoutUrl, '_blank', 'noopener,noreferrer');
+  const openCheckoutUrl = (url: string) => {
+    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+    const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
+    if (isMobile) {
+      window.location.href = url;
       return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const openPaymentSheet = (plan: EsimPlan) => {
+    setSelectedPlan(plan);
+    setSelectedPaymentMethod('bank_transfer');
+  };
+
+  const handleBuy = async (plan: EsimPlan, paymentMethod: EsimPaymentMethod): Promise<boolean> => {
+    if (plan.checkoutUrl) {
+      openCheckoutUrl(plan.checkoutUrl);
+      return true;
     }
 
     try {
@@ -1117,23 +1188,33 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       const resp = await fetch('/api/esim/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: plan.id })
+        body: JSON.stringify({ planId: plan.id, paymentMethod })
       });
       const json = await resp.json();
       if (!resp.ok) {
         alert(json?.error || copy.checkoutMissing);
-        return;
+        return false;
       }
       if (json?.checkoutUrl) {
-        window.open(json.checkoutUrl, '_blank', 'noopener,noreferrer');
-        return;
+        openCheckoutUrl(json.checkoutUrl);
+        return true;
       }
       alert(copy.checkoutMissing);
+      return false;
     } catch (e) {
       console.error(e);
       alert(copy.checkoutMissing);
+      return false;
     } finally {
       setLoadingPlanId(null);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!selectedPlan) return;
+    const ok = await handleBuy(selectedPlan, selectedPaymentMethod);
+    if (ok) {
+      setSelectedPlan(null);
     }
   };
 
@@ -1191,7 +1272,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                 <p className="font-mono font-bold text-stone-900 dark:text-white">${plan.priceUsd.toFixed(2)} {plan.currency}</p>
               </div>
               <button
-                onClick={() => handleBuy(plan)}
+                onClick={() => openPaymentSheet(plan)}
                 disabled={loadingPlanId === plan.id}
                 className="mt-4 w-full bg-teal-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
@@ -1202,6 +1283,95 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
           ))}
         </div>
       )}
+
+      <AnimatePresence>
+        {selectedPlan && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPlan(null)}
+              className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 14 }}
+              className="relative w-full max-w-3xl bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-2xl"
+            >
+              <div className="flex items-start justify-between mb-7">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedPlan(null)}
+                    className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                  >
+                    <ChevronLeft size={24} className="text-stone-400" />
+                  </button>
+                  <div>
+                    <h4 className="text-3xl font-serif text-stone-900 dark:text-white">{copy.paymentTitle}</h4>
+                    <p className="text-xs uppercase tracking-[0.18em] font-black text-stone-400 dark:text-stone-500 mt-1">
+                      {copy.paymentSubtitle}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedPlan(null)}
+                  className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <X size={24} className="text-stone-400" />
+                </button>
+              </div>
+
+              <div className="rounded-3xl border border-stone-100 dark:border-stone-800 p-6 sm:p-7 bg-stone-50/70 dark:bg-stone-800/50 mb-7">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-2xl font-bold text-stone-600 dark:text-stone-300">{copy.totalAmount}</p>
+                    <p className="text-lg text-stone-400 dark:text-stone-500 mt-5">
+                      {copy.packageLabel}: {selectedPlan.name} ({selectedPlan.validityDays} {copy.day}) ({selectedPlan.data})
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-5xl font-black text-stone-900 dark:text-white">{formatNumber(toJpy(selectedPlan))} JPY</p>
+                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-2">
+                      {copy.estimatedLabel}: {selectedPlan.priceUsd.toFixed(2)} {selectedPlan.currency}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs uppercase tracking-[0.18em] font-black text-stone-400 dark:text-stone-500 mb-3">
+                {copy.selectMethod}
+              </p>
+              <div className="space-y-3 mb-7">
+                {paymentMethods.map((method) => (
+                  <button
+                    key={method.key}
+                    onClick={() => setSelectedPaymentMethod(method.key)}
+                    className={`w-full rounded-2xl border p-5 flex items-center gap-4 transition-colors text-left ${
+                      selectedPaymentMethod === method.key
+                        ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                        : 'border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 text-stone-700 dark:text-stone-200'
+                    }`}
+                  >
+                    <span className="text-stone-400 dark:text-stone-300">{method.icon}</span>
+                    <span className="text-2xl font-bold">{method.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={handleConfirmPayment}
+                disabled={loadingPlanId === selectedPlan.id}
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl text-lg font-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loadingPlanId === selectedPlan.id ? <Loader2 className="animate-spin w-5 h-5" /> : null}
+                {loadingPlanId === selectedPlan.id ? copy.processing : copy.payNow}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
@@ -1771,6 +1941,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   ];
   const mobileMenuVersionLabel = 'V1.1.3-JP';
   const aboutLabel = language === 'vi' ? 'Giới thiệu' : language === 'ja' ? '紹介' : 'About';
+  const esimPaymentLabel = language === 'vi' ? 'Thanh toán eSIM' : language === 'ja' ? 'eSIM決済' : 'eSIM Payment';
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -2338,6 +2509,15 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                       className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                     >
                       {t.pricing}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        setActiveUtility('esim');
+                      }}
+                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                    >
+                      {esimPaymentLabel}
                     </button>
                     <button
                       onClick={() => {
