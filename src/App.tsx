@@ -1746,14 +1746,14 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 
   const t = translations[language];
-
-  const toggleLanguage = () => {
-    const langs: Language[] = ['en', 'ja', 'vi'];
-    const nextIndex = (langs.indexOf(language) + 1) % langs.length;
-    setLanguage(langs[nextIndex]);
-  };
+  const languageOptions: { code: Language; label: string }[] = [
+    { code: 'vi', label: 'Tiếng Việt' },
+    { code: 'en', label: 'English' },
+    { code: 'ja', label: '日本語' }
+  ];
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -2133,14 +2133,46 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             <Crown size={18} />
             <span className="hidden sm:inline">{t.pricing}</span>
           </button>
-          
-          <button 
-            onClick={toggleLanguage}
-            className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors font-bold text-xs uppercase"
-            title="Switch Language"
-          >
-            {language}
-          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowLanguageMenu((prev) => !prev)}
+              className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors font-bold text-xs uppercase border border-stone-200 dark:border-stone-800"
+              title="Language"
+            >
+              {language}
+            </button>
+
+            <AnimatePresence>
+              {showLanguageMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  className="absolute right-0 mt-2 w-[240px] bg-white/95 dark:bg-stone-900/95 border border-stone-200 dark:border-stone-800 rounded-2xl p-2 shadow-2xl backdrop-blur-md z-[60]"
+                >
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {languageOptions.map((item) => (
+                      <button
+                        key={item.code}
+                        onClick={() => {
+                          setLanguage(item.code);
+                          setShowLanguageMenu(false);
+                        }}
+                        className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                          language === item.code
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <button 
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -2412,9 +2444,9 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                 )}
               </AnimatePresence>
               
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-4xl mx-auto">
                 <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-8 text-center">{t.popularTopics}</p>
-                <div className="flex flex-col gap-4">
+                <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
                   {t.suggestedTopics.filter((topic: any) => !topic.utility).map((topic: any) => (
                     <button 
                       key={topic.text}
@@ -2425,20 +2457,20 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                           setPrompt(topic.query || '');
                         }
                       }}
-                      className="group p-6 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-6 w-full"
+                      className="group min-w-[260px] sm:min-w-[320px] p-5 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-4 snap-start"
                     >
-                      <div className="w-16 h-16 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform shadow-sm">
+                      <div className="w-12 h-12 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-sm">
                         {topic.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-stone-900 dark:text-white text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        <h4 className="font-bold text-stone-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
                           {topic.text}
                         </h4>
-                        <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
                           {topic.description}
                         </p>
                       </div>
-                      <ArrowRight size={20} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
+                      <ArrowRight size={16} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
                     </button>
                   ))}
                 </div>
