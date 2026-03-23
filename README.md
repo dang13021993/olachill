@@ -1,4 +1,4 @@
-# JapanAI - olachill.com
+# Olachill - olachill.com
 
 Smart travel planning for Japan with AI. Discover destinations, itineraries, and travel tips from Tokyo to Kyoto.
 
@@ -8,7 +8,9 @@ Official deployment: [olachill.com](https://olachill.com)
 
 - **AI Itinerary Generator**: Create custom 7-day or multi-city plans in seconds.
 - **Real-time Search**: Find cafes, restaurants, and second-hand shops (Hard Off, Book Off) across Japan.
-- **Train Route Search**: Quick reference for Shinkansen and local train routes.
+- **Train & Bus Search**: Quick reference for Shinkansen, local train routes, and highway bus options.
+- **eSIM Checkout Flow**: Fetch plans from provider API and open payment flow on desktop/mobile.
+- **Upgrade Plans**: Starter/Pro checkout with runtime public config for Cloud Run.
 - **Personalization**: Save your travel style, budget, and interests for tailored recommendations.
 - **Multi-language Support**: English, Japanese, and Vietnamese.
 - **Dark Mode**: Beautiful editorial design optimized for both light and dark environments.
@@ -32,8 +34,8 @@ Official deployment: [olachill.com](https://olachill.com)
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/japan-ai.git
-   cd japan-ai
+   git clone https://github.com/dang13021993/olachill.git
+   cd olachill
    ```
 
 2. Install dependencies:
@@ -51,16 +53,9 @@ Official deployment: [olachill.com](https://olachill.com)
 
 ## Deployment
 
-This project is configured for easy deployment to **Vercel** or **Firebase Hosting**.
+This project is configured for **Cloud Run + Cloud Build** deployment.
 
-### Vercel
-Simply connect your GitHub repository to Vercel. The `vercel.json` file handles SPA routing automatically.
-
-### Firebase
-```bash
-npm run build
-firebase deploy
-```
+See full runbook: [`docs/OPERATIONS_CHECKLIST.md`](./docs/OPERATIONS_CHECKLIST.md).
 
 ## License
 

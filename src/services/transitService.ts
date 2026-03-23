@@ -185,6 +185,21 @@ const BUS_TEMPLATES: Record<string, TransitTemplate[]> = {
   ]
 };
 
+function normalizeTemplateMap(templates: Record<string, TransitTemplate[]>): Record<string, TransitTemplate[]> {
+  return Object.entries(templates).reduce((acc, [rawKey, value]) => {
+    const [a, b] = rawKey.split("|").map((part) => part.trim());
+    if (!a || !b) {
+      return acc;
+    }
+    const normalizedKey = [a, b].sort().join("|");
+    acc[normalizedKey] = value;
+    return acc;
+  }, {} as Record<string, TransitTemplate[]>);
+}
+
+const NORMALIZED_TRAIN_TEMPLATES = normalizeTemplateMap(TRAIN_TEMPLATES);
+const NORMALIZED_BUS_TEMPLATES = normalizeTemplateMap(BUS_TEMPLATES);
+
 function canonicalizeCity(rawInput: string): string | null {
   const normalized = rawInput
     .trim()
@@ -321,7 +336,7 @@ export function searchTransitLocal(
   }
 
   const key = routeKey(from, to);
-  const routeTemplates = mode === "train" ? TRAIN_TEMPLATES[key] : BUS_TEMPLATES[key];
+  const routeTemplates = mode === "train" ? NORMALIZED_TRAIN_TEMPLATES[key] : NORMALIZED_BUS_TEMPLATES[key];
   const templates = routeTemplates && routeTemplates.length > 0 ? routeTemplates : buildFallbackTemplates(from, to, mode);
 
   return buildResultsFromTemplates(templates, time, mode);
