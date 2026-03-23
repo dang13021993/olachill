@@ -26,6 +26,10 @@ interface EsimPlan {
   features?: string[];
 }
 
+function isEsimProviderConfigured(): boolean {
+  return Boolean(process.env.ESIM_PROVIDER_BASE_URL && process.env.ESIM_PROVIDER_API_KEY);
+}
+
 const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
   "tokyo-disneyland": "https://www.tokyodisneyresort.jp/en/tdl/ticket/",
   "usj": "https://www.usj.co.jp/web/en/us/tickets",
@@ -327,12 +331,14 @@ async function startServer() {
 
   app.get("/api/esim/plans", async (req, res) => {
     const country = String(req.query.country || "JP").trim().toUpperCase();
+    const providerConfigured = isEsimProviderConfigured();
 
     try {
       const providerPlans = await fetchEsimPlansFromProvider(country);
       if (providerPlans && providerPlans.length > 0) {
         res.json({
           source: "provider",
+          providerConfigured,
           plans: providerPlans
         });
         return;
@@ -344,6 +350,7 @@ async function startServer() {
     const localPlans = DEFAULT_ESIM_PLANS.filter((p) => p.country === country);
     res.json({
       source: "local-fallback",
+      providerConfigured,
       plans: localPlans.length > 0 ? localPlans : DEFAULT_ESIM_PLANS
     });
   });
@@ -353,6 +360,15 @@ async function startServer() {
 
     if (typeof planId !== "string" || !planId.trim()) {
       res.status(400).json({ error: "planId is required" });
+      return;
+    }
+
+    if (!isEsimProviderConfigured()) {
+      res.status(503).json({
+        error: "eSIM provider is not configured on server",
+        hint: "Set ESIM_PROVIDER_BASE_URL and ESIM_PROVIDER_API_KEY",
+        providerConfigured: false
+      });
       return;
     }
 
@@ -371,9 +387,8 @@ async function startServer() {
       return;
     }
 
-    res.status(501).json({
-      error: "eSIM provider is not configured on server",
-      hint: "Set ESIM_PROVIDER_BASE_URL and ESIM_PROVIDER_API_KEY"
+    res.status(502).json({
+      error: "Failed to create eSIM order with provider"
     });
   });
 

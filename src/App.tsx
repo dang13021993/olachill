@@ -1105,6 +1105,8 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       provider: 'Nhà cung cấp',
       sourceProvider: 'Nguồn: nhà cung cấp',
       sourceFallback: 'Nguồn: fallback local',
+      providerNotConfigured: 'Server chưa bật cổng eSIM provider. Vui lòng cấu hình ESIM_PROVIDER_BASE_URL và ESIM_PROVIDER_API_KEY trên Cloud Run.',
+      providerNotConfiguredShort: 'Chưa bật thanh toán eSIM',
       checkoutMissing: 'Gói này chưa có link thanh toán từ nhà cung cấp.',
       paymentTitle: 'Phương thức thanh toán',
       paymentSubtitle: 'Chọn phương thức thanh toán phù hợp',
@@ -1116,6 +1118,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       methodBank: 'Chuyển khoản ngân hàng (Nhật Bản)',
       payNow: 'Thanh toán ngay',
       processing: 'Đang tạo đơn...',
+      buyUnavailable: 'Tạm chưa khả dụng',
       estimatedLabel: 'Ước tính'
     },
     en: {
@@ -1137,6 +1140,8 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       provider: 'Provider',
       sourceProvider: 'Source: provider',
       sourceFallback: 'Source: local fallback',
+      providerNotConfigured: 'eSIM provider is not configured on server. Set ESIM_PROVIDER_BASE_URL and ESIM_PROVIDER_API_KEY on Cloud Run.',
+      providerNotConfiguredShort: 'eSIM checkout unavailable',
       checkoutMissing: 'This plan does not include a checkout URL yet.',
       paymentTitle: 'Payment Method',
       paymentSubtitle: 'Choose the payment option that fits',
@@ -1148,6 +1153,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       methodBank: 'Bank Transfer (Japan)',
       payNow: 'Pay Now',
       processing: 'Creating order...',
+      buyUnavailable: 'Unavailable',
       estimatedLabel: 'Estimated'
     },
     ja: {
@@ -1169,6 +1175,8 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       provider: '提供元',
       sourceProvider: 'ソース: プロバイダー',
       sourceFallback: 'ソース: ローカルフォールバック',
+      providerNotConfigured: 'サーバーで eSIM プロバイダーが未設定です。Cloud Run に ESIM_PROVIDER_BASE_URL と ESIM_PROVIDER_API_KEY を設定してください。',
+      providerNotConfiguredShort: 'eSIM 決済は未設定です',
       checkoutMissing: 'このプランには決済URLがありません。',
       paymentTitle: 'お支払い方法',
       paymentSubtitle: '最適なお支払い方法を選択',
@@ -1180,6 +1188,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       methodBank: '銀行振込（日本）',
       payNow: '今すぐ支払う',
       processing: '注文を作成中...',
+      buyUnavailable: '利用不可',
       estimatedLabel: '概算'
     }
   } as const;
@@ -1188,6 +1197,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   const [plans, setPlans] = useState<EsimPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<'provider' | 'local-fallback' | ''>('');
+  const [providerConfigured, setProviderConfigured] = useState(true);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<EsimPlan | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<EsimPaymentMethod>('bank_transfer');
@@ -1246,10 +1256,12 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       const json = await resp.json();
       setPlans(Array.isArray(json?.plans) ? json.plans : []);
       setSource(json?.source === 'provider' ? 'provider' : 'local-fallback');
+      setProviderConfigured(typeof json?.providerConfigured === 'boolean' ? json.providerConfigured : json?.source === 'provider');
     } catch (e) {
       console.error(e);
       setPlans([]);
       setSource('local-fallback');
+      setProviderConfigured(false);
     } finally {
       setLoading(false);
     }
@@ -1270,11 +1282,20 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   };
 
   const openPaymentSheet = (plan: EsimPlan) => {
+    if (!providerConfigured && !plan.checkoutUrl) {
+      alert(copy.providerNotConfigured);
+      return;
+    }
     setSelectedPlan(plan);
     setSelectedPaymentMethod('bank_transfer');
   };
 
   const handleBuy = async (plan: EsimPlan, paymentMethod: EsimPaymentMethod): Promise<boolean> => {
+    if (!providerConfigured && !plan.checkoutUrl) {
+      alert(copy.providerNotConfigured);
+      return false;
+    }
+
     if (plan.checkoutUrl) {
       openCheckoutUrl(plan.checkoutUrl);
       return true;
@@ -1289,7 +1310,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       });
       const json = await resp.json();
       if (!resp.ok) {
-        alert(json?.error || copy.checkoutMissing);
+        alert(json?.error || copy.providerNotConfigured || copy.checkoutMissing);
         return false;
       }
       if (json?.checkoutUrl) {
@@ -1347,6 +1368,12 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-4">
         {source === 'provider' ? copy.sourceProvider : copy.sourceFallback}
       </p>
+
+      {!providerConfigured && (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {copy.providerNotConfigured}
+        </div>
+      )}
 
       {loading ? (
         <div className="py-20 text-center">
@@ -1421,11 +1448,11 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                 <div className="mt-5 space-y-2">
                   <button
                     onClick={() => openPaymentSheet(plan)}
-                    disabled={loadingPlanId === plan.id}
+                    disabled={loadingPlanId === plan.id || (!providerConfigured && !plan.checkoutUrl)}
                     className="w-full bg-emerald-500 text-white py-3.5 rounded-2xl text-base sm:text-lg font-black hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {loadingPlanId === plan.id ? <Loader2 className="animate-spin w-4 h-4" /> : null}
-                    {copy.buy}
+                    {!providerConfigured && !plan.checkoutUrl ? copy.buyUnavailable : copy.buy}
                   </button>
                 </div>
               </div>
@@ -1520,11 +1547,11 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
 
               <button
                 onClick={handleConfirmPayment}
-                disabled={loadingPlanId === selectedPlan.id}
+                disabled={loadingPlanId === selectedPlan.id || (!providerConfigured && !selectedPlan.checkoutUrl)}
                 className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl text-base sm:text-lg font-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loadingPlanId === selectedPlan.id ? <Loader2 className="animate-spin w-5 h-5" /> : null}
-                {loadingPlanId === selectedPlan.id ? copy.processing : copy.payNow}
+                {loadingPlanId === selectedPlan.id ? copy.processing : (!providerConfigured && !selectedPlan.checkoutUrl ? copy.providerNotConfiguredShort : copy.payNow)}
               </button>
             </motion.div>
           </div>
