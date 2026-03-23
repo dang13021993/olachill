@@ -2205,6 +2205,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const legacySessionsStorageKey = 'japan_ai_sessions';
   const aiProcessingLabel = language === 'vi' ? `${t.appName} đang xử lý...` : language === 'ja' ? `${t.appName} が処理中...` : `${t.appName} is processing...`;
   const aiOptimizingLabel = language === 'vi' ? 'Đang tối ưu hóa lịch trình' : language === 'ja' ? '旅程を最適化中' : 'Optimizing itinerary';
+  const loggedInLabel = language === 'vi' ? 'Đã đăng nhập' : language === 'ja' ? 'ログイン済み' : 'Signed in';
   const processingSteps = language === 'vi'
     ? ['Tìm kiếm địa điểm', 'Tính toán chi phí', 'Kiểm tra sự kiện', 'Tối ưu hóa bản đồ']
     : language === 'ja'
@@ -2229,7 +2230,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   // Suggested topics based on popular queries and AI strengths
   const suggestedTopics = t.suggestedTopics;
 
-  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'personalization' | 'esim'>(null);
+  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'esim'>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -2605,6 +2606,33 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             >
               <Plus size={20} />
             </button>
+            {authLoading ? (
+              <div className="w-10 h-10 flex items-center justify-center">
+                <Loader2 className="animate-spin text-stone-400" size={18} />
+              </div>
+            ) : user ? (
+              <button
+                onClick={logout}
+                className="w-10 h-10 rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden"
+                title={t.logout}
+              >
+                <img
+                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`}
+                  alt={user.displayName || 'User'}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </button>
+            ) : (
+              <button
+                onClick={handleLogin}
+                disabled={loginPending}
+                className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                title={t.login}
+              >
+                {loginPending ? <Loader2 className="animate-spin" size={18} /> : <User size={18} />}
+              </button>
+            )}
           </div>
 
           <div className="hidden md:flex items-center gap-2">
@@ -2783,6 +2811,44 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                   Visit olachill.com
                   <ExternalLink size={16} />
                 </button>
+              </div>
+
+              <div className="px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+                {authLoading ? (
+                  <div className="flex items-center gap-2 text-stone-400">
+                    <Loader2 className="animate-spin" size={16} />
+                    <span className="text-sm">...</span>
+                  </div>
+                ) : user ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`}
+                        alt={user.displayName || 'User'}
+                        className="w-9 h-9 rounded-full border border-stone-200 dark:border-stone-700"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">{user.displayName || 'User'}</p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">{loggedInLabel}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={logout}
+                      className="shrink-0 text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
+                    >
+                      {t.logout}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleLogin}
+                    disabled={loginPending}
+                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {loginPending ? (language === 'vi' ? 'Đang đăng nhập...' : language === 'ja' ? 'ログイン中...' : 'Signing in...') : t.login}
+                  </button>
+                )}
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 py-8">
@@ -3015,14 +3081,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                       <SecondHandSearch 
                         onClose={() => setActiveUtility(null)} 
                         language={language}
-                      />
-                    )}
-                    {activeUtility === 'personalization' && (
-                      <Personalization 
-                        onClose={() => setActiveUtility(null)} 
-                        language={language}
-                        user={user}
-                        currentPrefs={userPrefs}
                       />
                     )}
                     {activeUtility === 'esim' && (
@@ -3298,7 +3356,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       </main>
 
       {/* Quick Tools - Always visible at bottom */}
-      <div className={`fixed bottom-3 sm:bottom-8 left-0 right-0 z-40 pointer-events-none ${messages.length === 0 && !activeUtility ? 'hidden md:block' : ''}`}>
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
         <div className="max-w-4xl mx-auto px-3 pointer-events-auto overflow-hidden">
           <div className="flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
           {t.suggestedTopics.filter((topic: any) => topic.utility).map((topic: any) => (

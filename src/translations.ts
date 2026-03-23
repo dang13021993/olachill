@@ -5,7 +5,7 @@ export interface SuggestedTopic {
   description: string;
   icon: string;
   query?: string;
-  utility?: 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'personalization' | 'esim';
+  utility?: 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'esim';
 }
 
 export const translations = {
@@ -156,7 +156,6 @@ export const translations = {
       { text: 'eSIM Data', description: 'Buy Japan eSIM quickly', utility: 'esim', icon: '📶' },
       { text: 'Cafe & Restaurant', description: 'Find best places to eat', utility: 'cafe', icon: '☕' },
       { text: 'Second-hand Goods', description: 'Find used items & fashion', utility: 'secondhand', icon: '🛍️' },
-      { text: 'Personalization', description: 'Set your travel preferences', utility: 'personalization', icon: '👤' },
       { text: 'Tokyo Stations', description: 'Major train stations in Tokyo', query: 'List major train stations in Tokyo and their features', icon: '🚉' },
       { text: 'Nagoya Parking', description: 'Cheap and convenient parking in Nagoya', query: 'Cheap and convenient parking in Nagoya', icon: '🅿️' },
       { text: 'Kimono in Osaka', description: 'Best rental shops in Osaka', query: 'Best kimono rental shops in Osaka', icon: '👘' },
@@ -311,7 +310,6 @@ export const translations = {
       { text: 'eSIMデータ', description: '日本のeSIMを購入', utility: 'esim', icon: '📶' },
       { text: 'カフェ＆レストラン', description: '最高の食事場所を探す', utility: 'cafe', icon: '☕' },
       { text: '中古品検索', description: '中古品やファッションを探す', utility: 'secondhand', icon: '🛍️' },
-      { text: 'パーソナライズ', description: '旅行の好みを設定', utility: 'personalization', icon: '👤' },
       { text: '東京の駅', description: '東京の主要な駅と特徴', query: '東京の主要な駅とその特徴を教えてください', icon: '🚉' },
       { text: '名古屋の駐車場', description: '名古屋の安くて便利な駐車場', query: '名古屋の安くて便利な駐車場', icon: '🅿️' },
       { text: '大阪の着物', description: 'おすすめのレンタル店', query: '大阪でおすすめの着物レンタル店', icon: '👘' },
@@ -466,7 +464,6 @@ export const translations = {
       { text: 'eSIM du lịch', description: 'Mua eSIM Nhật Bản nhanh', utility: 'esim', icon: '📶' },
       { text: 'Quán Cafe & Nhà hàng', description: 'Tìm địa điểm ăn uống tốt nhất', utility: 'cafe', icon: '☕' },
       { text: 'Tra cứu Đồ cũ', description: 'Tìm đồ dùng & thời trang cũ', utility: 'secondhand', icon: '🛍️' },
-      { text: 'Cá nhân hóa', description: 'Thiết lập sở thích du lịch', utility: 'personalization', icon: '👤' },
       { text: 'Ga tàu Tokyo', description: 'Các ga tàu lớn và đặc điểm tại Tokyo', query: 'Danh sách các ga tàu lớn ở Tokyo và đặc điểm của chúng', icon: '🚉' },
       { text: 'Bãi đỗ xe Nagoya', description: 'Tìm kiếm bãi đỗ xe thuận tiện và các điểm vui chơi tại Nagoya.', query: 'Tìm kiếm bãi đỗ xe thuận tiện và các điểm vui chơi tại Nagoya.', icon: '🅿️' },
       { text: 'Kimono ở Osaka', description: 'Trải nghiệm mặc Kimono truyền thống tại các cửa hàng uy tín ở Osaka.', query: 'Tiệm cho thuê kimono tốt nhất ở Osaka', icon: '👘' },
