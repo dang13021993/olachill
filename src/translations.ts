@@ -330,7 +330,7 @@ export const translations = {
     history: 'Lịch sử',
     searchPlaceholder: 'Tìm địa điểm, hoạt động du lịch...',
     heroTitle: 'Xin chào, tôi là Olachill',
-    heroSubtitle: 'Trợ lý AI giúp bạn khám phá Nhật Bản',
+    heroSubtitle: 'trợ lý AI giúp bạn khám phá Nhật Bản',
     heroDescription: 'Thiết kế lịch trình du lịch Nhật Bản độc bản, từ Tokyo hiện đại đến Kyoto cổ kính, phù hợp với riêng bạn.',
     heroInputPlaceholder: 'Ví dụ: 7 ngày cung đường vàng Tokyo - Kyoto - Osaka...',
     popularTopics: 'Chủ đề phổ biến & Câu hỏi thường gặp:',

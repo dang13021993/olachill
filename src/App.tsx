@@ -38,7 +38,9 @@ import {
   Crown,
   Smartphone,
   CreditCard,
-  Landmark
+  Landmark,
+  Paperclip,
+  Mic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -269,7 +271,7 @@ const TrainSearch = ({
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[88vh] sm:max-h-[80vh] overflow-y-auto"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -493,7 +495,7 @@ const CafeSearch = ({ onClose, language }: { onClose: () => void, language: Lang
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[88vh] sm:max-h-[80vh] overflow-y-auto"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -604,7 +606,7 @@ const SecondHandSearch = ({ onClose, language }: { onClose: () => void, language
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[88vh] sm:max-h-[80vh] overflow-y-auto"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -929,7 +931,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto"
+        className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -1249,7 +1251,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-8 rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto"
+      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -1325,7 +1327,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
               initial={{ opacity: 0, scale: 0.95, y: 14 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 14 }}
-              className="relative w-full max-w-3xl bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-2xl"
+              className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl"
             >
               <div className="flex items-start justify-between mb-7">
                 <div className="flex items-center gap-3">
@@ -1336,7 +1338,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                     <ChevronLeft size={24} className="text-stone-400" />
                   </button>
                   <div>
-                    <h4 className="text-3xl font-serif text-stone-900 dark:text-white">{copy.paymentTitle}</h4>
+                    <h4 className="text-xl sm:text-3xl font-serif text-stone-900 dark:text-white">{copy.paymentTitle}</h4>
                     <p className="text-xs uppercase tracking-[0.18em] font-black text-stone-400 dark:text-stone-500 mt-1">
                       {copy.paymentSubtitle}
                     </p>
@@ -1353,13 +1355,13 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
               <div className="rounded-3xl border border-stone-100 dark:border-stone-800 p-6 sm:p-7 bg-stone-50/70 dark:bg-stone-800/50 mb-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-2xl font-bold text-stone-600 dark:text-stone-300">{copy.totalAmount}</p>
-                    <p className="text-lg text-stone-400 dark:text-stone-500 mt-5">
+                    <p className="text-lg sm:text-2xl font-bold text-stone-600 dark:text-stone-300">{copy.totalAmount}</p>
+                    <p className="text-sm sm:text-lg text-stone-400 dark:text-stone-500 mt-4">
                       {copy.packageLabel}: {selectedPlan.name} ({selectedPlan.validityDays} {copy.day}) ({selectedPlan.data})
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-5xl font-black text-stone-900 dark:text-white">{formatNumber(toJpy(selectedPlan))} JPY</p>
+                    <p className="text-3xl sm:text-5xl font-black text-stone-900 dark:text-white">{formatNumber(toJpy(selectedPlan))} JPY</p>
                     <p className="text-xs text-stone-400 dark:text-stone-500 mt-2">
                       {copy.estimatedLabel}: {selectedPlan.priceUsd.toFixed(2)} {selectedPlan.currency}
                     </p>
@@ -1382,7 +1384,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                     }`}
                   >
                     <span className="text-stone-400 dark:text-stone-300">{method.icon}</span>
-                    <span className="text-2xl font-bold">{method.label}</span>
+                    <span className="text-base sm:text-2xl font-bold">{method.label}</span>
                   </button>
                 ))}
               </div>
@@ -1390,7 +1392,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
               <button
                 onClick={handleConfirmPayment}
                 disabled={loadingPlanId === selectedPlan.id}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl text-lg font-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl text-base sm:text-lg font-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loadingPlanId === selectedPlan.id ? <Loader2 className="animate-spin w-5 h-5" /> : null}
                 {loadingPlanId === selectedPlan.id ? copy.processing : copy.payNow}
@@ -1485,7 +1487,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -1497,7 +1499,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="relative w-full max-w-2xl bg-white dark:bg-stone-900 rounded-3xl border border-stone-100 dark:border-stone-800 p-8 shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-5 sm:p-8 shadow-2xl"
       >
         <button
           onClick={onClose}
@@ -1969,6 +1971,15 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const mobileMenuVersionLabel = 'V1.1.3-JP';
   const aboutLabel = language === 'vi' ? 'Giới thiệu' : language === 'ja' ? '紹介' : 'About';
   const esimPaymentLabel = language === 'vi' ? 'Thanh toán eSIM' : language === 'ja' ? 'eSIM決済' : 'eSIM Payment';
+  const sessionsStorageKey = 'olachill_sessions';
+  const legacySessionsStorageKey = 'japan_ai_sessions';
+  const aiProcessingLabel = language === 'vi' ? `${t.appName} đang xử lý...` : language === 'ja' ? `${t.appName} が処理中...` : `${t.appName} is processing...`;
+  const aiOptimizingLabel = language === 'vi' ? 'Đang tối ưu hóa lịch trình' : language === 'ja' ? '旅程を最適化中' : 'Optimizing itinerary';
+  const processingSteps = language === 'vi'
+    ? ['Tìm kiếm địa điểm', 'Tính toán chi phí', 'Kiểm tra sự kiện', 'Tối ưu hóa bản đồ']
+    : language === 'ja'
+      ? ['スポット検索', '費用計算', 'イベント確認', '地図最適化']
+      : ['Searching places', 'Calculating cost', 'Checking events', 'Optimizing map'];
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -2054,7 +2065,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   useEffect(() => {
     setIsReady(true);
     // Load saved sessions
-    const saved = localStorage.getItem('japan_ai_sessions');
+    const saved = localStorage.getItem(sessionsStorageKey) || localStorage.getItem(legacySessionsStorageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -2067,6 +2078,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
           }))
         }));
         setSavedSessions(sessions);
+        localStorage.setItem(sessionsStorageKey, JSON.stringify(sessions));
+        if (localStorage.getItem(legacySessionsStorageKey)) {
+          localStorage.removeItem(legacySessionsStorageKey);
+        }
       } catch (e) {
         console.error("Error loading saved sessions:", e);
       }
@@ -2075,9 +2090,9 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
 
   useEffect(() => {
     if (isReady) {
-      localStorage.setItem('japan_ai_sessions', JSON.stringify(savedSessions));
+      localStorage.setItem(sessionsStorageKey, JSON.stringify(savedSessions));
     }
-  }, [savedSessions, isReady]);
+  }, [savedSessions, isReady, sessionsStorageKey]);
 
   const saveCurrentSession = () => {
     if (messages.length === 0) return;
@@ -2279,7 +2294,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   return (
     <div className="min-h-screen bg-[#FDFCFB] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col transition-colors duration-300 overflow-x-hidden">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 h-20 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-4 md:px-6 flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 h-20 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-4 md:px-6 flex items-center justify-between overflow-x-hidden">
         <div className="flex items-center gap-2 md:gap-3">
           <button
             onClick={() => setShowMobileMenu(true)}
@@ -2464,10 +2479,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             ) : (
               <button 
                 onClick={handleLogin}
-                className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+                className="ml-1 sm:ml-2 px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 sm:gap-2 shrink-0"
               >
                 <User size={18} />
-                <span>{t.login}</span>
+                <span className="hidden sm:inline">{t.login}</span>
               </button>
             )}
           </div>
@@ -2705,18 +2720,20 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         )}
       </AnimatePresence>
 
-      <main className="flex-1 pt-28 sm:pt-32 pb-32 px-4 sm:px-6 max-w-5xl mx-auto w-full relative">
+      <main className="flex-1 pt-28 sm:pt-32 pb-32 px-4 sm:px-6 max-w-5xl mx-auto w-full relative overflow-x-hidden">
         {messages.length === 0 ? (
           /* Hero Section */
           <div className="flex flex-col items-center text-center py-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-3xl px-1 sm:px-0"
+              className="w-full max-w-3xl px-1 sm:px-0 overflow-x-hidden"
             >
-              <h1 className="text-[clamp(2.35rem,10.8vw,4.5rem)] md:text-7xl font-serif leading-[1.1] mb-8 dark:text-white break-words">
+              <h1 className="hidden md:block text-7xl font-serif leading-[1.1] mb-8 dark:text-white break-words [overflow-wrap:anywhere]">
                 {t.heroTitle}
-                <span className="block italic text-emerald-600 dark:text-emerald-400 mt-1">{t.heroSubtitle}</span>
+                {t.heroSubtitle ? (
+                  <span className="block italic text-emerald-600 dark:text-emerald-400 mt-1">{t.heroSubtitle}</span>
+                ) : null}
               </h1>
 
               <AnimatePresence mode="wait">
@@ -2774,32 +2791,106 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                   >
-                    <p className="text-stone-500 dark:text-stone-400 text-lg mb-12 max-w-md mx-auto leading-relaxed">
-                      {t.heroDescription}
-                    </p>
+                    <div className="md:hidden w-full max-w-[430px] mx-auto">
+                      <div className="rounded-[34px] bg-white/80 dark:bg-stone-900/80 border border-stone-100 dark:border-stone-800 shadow-2xl shadow-stone-100/80 dark:shadow-none px-5 py-7">
+                        <div className="flex justify-center mb-7">
+                          <div className="relative w-[188px] h-[188px]">
+                            <div className="absolute top-0 left-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-sky-400 to-cyan-300" />
+                            <div className="absolute top-0 right-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-emerald-400 to-lime-300" />
+                            <div className="absolute bottom-0 left-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-teal-300 to-cyan-200" />
+                            <div className="absolute bottom-0 right-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-emerald-300 to-yellow-200" />
+                            <div className="absolute inset-[38px] rounded-3xl bg-white dark:bg-stone-900 border border-white/70 dark:border-stone-700 shadow-xl p-3">
+                              <OlachillLogo className="w-full h-full" />
+                            </div>
+                          </div>
+                        </div>
 
-                    <form onSubmit={handleFormSubmit} className="relative max-w-xl mx-auto group mb-12">
-                      <input 
-                        type="text" 
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder={t.heroInputPlaceholder}
-                        className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl py-6 pl-8 pr-20 shadow-xl shadow-stone-100 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-stone-800 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600"
-                      />
-                      <button 
-                        disabled={loading}
-                        className="absolute right-3 top-3 bottom-3 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-6 rounded-2xl flex items-center justify-center hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
-                      >
-                        {loading ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                      </button>
-                    </form>
+                        <h2 className="text-left text-[clamp(2rem,10vw,2.6rem)] leading-[1.06] font-black tracking-tight text-stone-900 dark:text-white mb-2 [overflow-wrap:anywhere]">
+                          {t.heroTitle}
+                        </h2>
+                        {t.heroSubtitle ? (
+                          <p className="text-left text-[clamp(1.45rem,7.2vw,2rem)] leading-[1.1] font-serif italic text-emerald-600 dark:text-emerald-400 mb-4 [overflow-wrap:anywhere]">
+                            {t.heroSubtitle}
+                          </p>
+                        ) : null}
+                        <p className="text-left text-stone-500 dark:text-stone-400 text-[15px] leading-relaxed mb-6">
+                          {t.heroDescription}
+                        </p>
+
+                        <form onSubmit={handleFormSubmit} className="rounded-[30px] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 shadow-xl shadow-stone-100 dark:shadow-none p-4">
+                          <textarea
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            placeholder={t.heroInputPlaceholder}
+                            rows={3}
+                            className="w-full resize-none bg-transparent outline-none text-[20px] leading-tight text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
+                          />
+                          <div className="mt-3 flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="w-10 h-10 rounded-full border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 flex items-center justify-center"
+                              >
+                                <Paperclip size={18} />
+                              </button>
+                              <button
+                                type="button"
+                                className="w-10 h-10 rounded-full border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 flex items-center justify-center"
+                              >
+                                <Mic size={18} />
+                              </button>
+                            </div>
+                            <button
+                              disabled={loading}
+                              className="w-12 h-12 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 flex items-center justify-center transition-colors hover:bg-stone-800 dark:hover:bg-stone-200 disabled:opacity-50"
+                            >
+                              {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <ArrowRight size={22} />}
+                            </button>
+                          </div>
+                        </form>
+
+                        <div className="mt-5 flex gap-2.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                          {t.suggestedTopics.filter((topic: any) => !topic.utility).slice(0, 4).map((topic: any) => (
+                            <button
+                              key={topic.text}
+                              onClick={() => setPrompt(topic.query || '')}
+                              className="shrink-0 px-4 py-2 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-sm text-stone-700 dark:text-stone-200 font-semibold"
+                            >
+                              {topic.text}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="hidden md:block">
+                      <p className="text-stone-500 dark:text-stone-400 text-lg mb-12 max-w-md mx-auto leading-relaxed">
+                        {t.heroDescription}
+                      </p>
+
+                      <form onSubmit={handleFormSubmit} className="relative max-w-xl mx-auto group mb-12">
+                        <input 
+                          type="text" 
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          placeholder={t.heroInputPlaceholder}
+                          className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl py-6 pl-8 pr-20 shadow-xl shadow-stone-100 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-stone-800 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600"
+                        />
+                        <button 
+                          disabled={loading}
+                          className="absolute right-3 top-3 bottom-3 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-6 rounded-2xl flex items-center justify-center hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
+                        >
+                          {loading ? <Loader2 className="animate-spin" /> : <ArrowRight />}
+                        </button>
+                      </form>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
               
-              <div className="max-w-4xl mx-auto">
+              <div className="hidden md:block w-full max-w-4xl mx-auto overflow-hidden">
                 <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-8 text-center">{t.popularTopics}</p>
-                <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+                <div className="flex w-full max-w-full gap-4 overflow-x-auto overscroll-x-contain pb-2 px-1 snap-x snap-mandatory">
                   {t.suggestedTopics.filter((topic: any) => !topic.utility).map((topic: any) => (
                     <button 
                       key={topic.text}
@@ -2810,7 +2901,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                           setPrompt(topic.query || '');
                         }
                       }}
-                      className="group min-w-[260px] sm:min-w-[320px] p-5 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-4 snap-start"
+                      className="group min-w-[240px] sm:min-w-[300px] p-5 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-4 snap-start"
                     >
                       <div className="w-12 h-12 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-sm">
                         {topic.icon}
@@ -2885,34 +2976,29 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                           <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-stone-900 animate-pulse" />
                         </div>
                         <div>
-                          <h4 className="font-bold text-stone-900 dark:text-white text-sm">JapanAI đang xử lý...</h4>
+                          <h4 className="font-bold text-stone-900 dark:text-white text-sm">{aiProcessingLabel}</h4>
                           <div className="flex items-center gap-2 mt-1">
                             <div className="flex gap-1">
                               <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 rounded-full bg-emerald-500" />
                               <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 rounded-full bg-emerald-500" />
                               <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 rounded-full bg-emerald-500" />
                             </div>
-                            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Đang tối ưu hóa lịch trình</p>
+                            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{aiOptimizingLabel}</p>
                           </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { label: 'Tìm kiếm địa điểm', delay: 0 },
-                          { label: 'Tính toán chi phí', delay: 0.5 },
-                          { label: 'Kiểm tra sự kiện', delay: 1.0 },
-                          { label: 'Tối ưu hóa bản đồ', delay: 1.5 }
-                        ].map((step, i) => (
+                        {processingSteps.map((step, i) => (
                           <motion.div 
                             key={i}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: step.delay }}
+                            transition={{ delay: i * 0.35 }}
                             className="flex items-center gap-2 px-3 py-2 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-100 dark:border-stone-800"
                           >
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">{step.label}</span>
+                            <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">{step}</span>
                           </motion.div>
                         ))}
                       </div>
@@ -2965,9 +3051,9 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       </main>
 
       {/* Quick Tools - Always visible at bottom */}
-      <div className="fixed bottom-3 sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
-        <div className="max-w-4xl mx-auto px-3 pointer-events-auto">
-          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1">
+      <div className={`fixed bottom-3 sm:bottom-8 left-0 right-0 z-40 pointer-events-none ${messages.length === 0 && !activeUtility ? 'hidden md:block' : ''}`}>
+        <div className="max-w-4xl mx-auto px-3 pointer-events-auto overflow-hidden">
+          <div className="flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
           {t.suggestedTopics.filter((topic: any) => topic.utility).map((topic: any) => (
             <button
               key={topic.utility}
