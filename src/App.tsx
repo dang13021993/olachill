@@ -2277,7 +2277,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   if (!isReady) return <SplashScreen language={language} />;
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col transition-colors duration-300">
+    <div className="min-h-screen bg-[#FDFCFB] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col transition-colors duration-300 overflow-x-hidden">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 h-20 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-4 md:px-6 flex items-center justify-between">
         <div className="flex items-center gap-2 md:gap-3">
@@ -2705,18 +2705,18 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         )}
       </AnimatePresence>
 
-      <main className="flex-1 pt-32 pb-32 px-6 max-w-5xl mx-auto w-full relative">
+      <main className="flex-1 pt-28 sm:pt-32 pb-32 px-4 sm:px-6 max-w-5xl mx-auto w-full relative">
         {messages.length === 0 ? (
           /* Hero Section */
           <div className="flex flex-col items-center text-center py-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-3xl"
+              className="w-full max-w-3xl px-1 sm:px-0"
             >
-              <h1 className="text-6xl md:text-7xl font-serif leading-[1.1] mb-8 dark:text-white">
-                {t.heroTitle} <br />
-                <span className="italic text-emerald-600 dark:text-emerald-400">{t.heroSubtitle}</span>
+              <h1 className="text-[clamp(2.35rem,10.8vw,4.5rem)] md:text-7xl font-serif leading-[1.1] mb-8 dark:text-white break-words">
+                {t.heroTitle}
+                <span className="block italic text-emerald-600 dark:text-emerald-400 mt-1">{t.heroSubtitle}</span>
               </h1>
 
               <AnimatePresence mode="wait">
@@ -2965,13 +2965,14 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       </main>
 
       {/* Quick Tools - Always visible at bottom */}
-      <div className="fixed bottom-8 left-0 right-0 z-40 pointer-events-none">
-        <div className="max-w-4xl mx-auto px-4 flex flex-wrap justify-center gap-2 pointer-events-auto">
+      <div className="fixed bottom-3 sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
+        <div className="max-w-4xl mx-auto px-3 pointer-events-auto">
+          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1">
           {t.suggestedTopics.filter((topic: any) => topic.utility).map((topic: any) => (
             <button
               key={topic.utility}
               onClick={() => setActiveUtility(topic.utility as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border backdrop-blur-md shadow-lg ${
+              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border backdrop-blur-md shadow-lg ${
                 activeUtility === topic.utility
                   ? 'bg-emerald-600 text-white border-emerald-600'
                   : 'bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-200 border-stone-200 dark:border-stone-800 hover:border-emerald-500/50'
@@ -2981,6 +2982,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               <span className="hidden sm:inline">{topic.text}</span>
             </button>
           ))}
+          </div>
         </div>
       </div>
 
