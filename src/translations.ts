@@ -6,6 +6,8 @@ export interface SuggestedTopic {
   icon: string;
   query?: string;
   utility?: 'train' | 'tickets' | 'esim' | 'coupons';
+  slug?: string;
+  qrOnly?: boolean;
 }
 
 export const translations = {

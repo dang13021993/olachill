@@ -86,6 +86,9 @@ interface SavedSession {
   timestamp: number;
 }
 
+type TicketPanelType = 'tickets' | 'parks' | 'bus' | 'transfer' | 'privatecar' | 'food';
+type UtilityType = 'train' | 'tickets' | 'esim' | 'coupons';
+
 // --- Components ---
 
 const OlachillLogo = ({ className = '' }: { className?: string }) => (
@@ -863,16 +866,18 @@ const Personalization = ({ onClose, language, user, currentPrefs }: { onClose: (
 const TicketSearch = ({
   onClose,
   language,
-  fullLayout = false
+  fullLayout = false,
+  initialPanel = 'tickets'
 }: {
   onClose: () => void,
   language: Language,
-  fullLayout?: boolean
+  fullLayout?: boolean,
+  initialPanel?: TicketPanelType
 }) => {
   const t = translations[language];
   const copyByLang = {
     vi: {
-      panelTickets: 'Vé tham quan',
+      panelTickets: 'Hoạt động giải trí',
       panelParks: 'Vé công viên',
       panelCheapBus: 'Xe khách siêu rẻ',
       panelTransfer: 'Dịch vụ đưa đón',
@@ -937,7 +942,7 @@ const TicketSearch = ({
       }
     },
     en: {
-      panelTickets: 'Attraction Tickets',
+      panelTickets: 'Activities',
       panelParks: 'Amusement Parks',
       panelCheapBus: 'Cheap Bus',
       panelTransfer: 'Transport Services',
@@ -1002,7 +1007,7 @@ const TicketSearch = ({
       }
     },
     ja: {
-      panelTickets: '観光チケット',
+      panelTickets: 'アクティビティ',
       panelParks: '遊園地チケット',
       panelCheapBus: '格安バス',
       panelTransfer: '送迎サービス',
@@ -1068,7 +1073,6 @@ const TicketSearch = ({
     }
   } as const;
   const cp = copyByLang[language];
-  type TicketPanel = 'tickets' | 'parks' | 'bus' | 'transfer' | 'privatecar' | 'food';
   type TicketItem = {
     name: string;
     priceJpy: number;
@@ -1117,7 +1121,7 @@ const TicketSearch = ({
     cp.foodCategories.teaDessert
   ];
 
-  const [panelType, setPanelType] = useState<TicketPanel>('tickets');
+  const [panelType, setPanelType] = useState<TicketPanelType>(initialPanel);
   const [activeTicketCat, setActiveTicketCat] = useState<string>(ticketCategories[0]);
   const [activeParkCat, setActiveParkCat] = useState<string>(ticketCategories[0]);
   const [activeBusCat, setActiveBusCat] = useState<string>(busCategories[0]);
@@ -1142,6 +1146,10 @@ const TicketSearch = ({
     setActivePrivateCarCat(privateCarCategories[0]);
     setActiveFoodCat(foodCategories[0]);
   }, [language]);
+
+  useEffect(() => {
+    setPanelType(initialPanel);
+  }, [initialPanel]);
 
   const getBrandedLink = (slug: string) => {
     if (typeof window === 'undefined') return `/go/${slug}`;
@@ -1518,7 +1526,7 @@ const TicketSearch = ({
   ];
 
   const panelConfig: Record<
-    TicketPanel,
+    TicketPanelType,
     {
       categories: string[];
       activeCat: string;
@@ -1629,10 +1637,10 @@ const TicketSearch = ({
           </button>
         </div>
 
-        <div className="flex gap-2 mb-5">
+        <div className="mb-5 flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1">
           <button
             onClick={() => setPanelType('tickets')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'tickets'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
@@ -1642,7 +1650,7 @@ const TicketSearch = ({
           </button>
           <button
             onClick={() => setPanelType('parks')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'parks'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
@@ -1652,7 +1660,7 @@ const TicketSearch = ({
           </button>
           <button
             onClick={() => setPanelType('bus')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'bus'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
@@ -1662,7 +1670,7 @@ const TicketSearch = ({
           </button>
           <button
             onClick={() => setPanelType('transfer')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'transfer'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
@@ -1672,7 +1680,7 @@ const TicketSearch = ({
           </button>
           <button
             onClick={() => setPanelType('privatecar')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'privatecar'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
@@ -1682,7 +1690,7 @@ const TicketSearch = ({
           </button>
           <button
             onClick={() => setPanelType('food')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'food'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
@@ -1798,7 +1806,7 @@ const TicketSearch = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filtered.map((ticket, i) => (
             <button
               key={i}
@@ -3562,14 +3570,26 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [showSavedPlans, setShowSavedPlans] = useState(false);
 
   // Suggested topics based on popular queries and AI strengths
-  const suggestedTopics = t.suggestedTopics;
-  const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility && topic.utility !== 'coupons');
+  const suggestedTopics = t.suggestedTopics as SuggestedTopic[];
+  const nonUtilityTopics = suggestedTopics.filter((topic) => !topic.utility);
+  const affiliateTopicUtilityMap: Record<string, 'tickets' | 'coupons'> = {
+    'kkday-jp-jr-pass': 'tickets',
+    'kkday-jp-rail-tickets': 'tickets',
+    'kkday-jp-kimono-experience': 'tickets',
+    'kkday-jp-amusement-parks': 'tickets',
+    'kkday-jp-cheap-bus': 'tickets',
+    'kkday-jp-private-car': 'tickets',
+    'kkday-jp-restaurants': 'tickets',
+    'kkday-jp-hot-shopping-coupon': 'coupons'
+  };
 
   const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'esim' | 'coupons'>(null);
   const isUtilityFullscreen = activeUtility === 'train' || activeUtility === 'tickets';
   const isUtilityWideLayout = isUtilityFullscreen || activeUtility === 'esim';
+  const [topicQrTicket, setTopicQrTicket] = useState<{ text: string; slug: string } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [currentSubscriptionPlan, setCurrentSubscriptionPlan] = useState<UpgradePlanId>('free');
+  const [ticketPanelPreset, setTicketPanelPreset] = useState<TicketPanelType>('tickets');
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loginPending, setLoginPending] = useState(false);
@@ -3577,6 +3597,123 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const loginAlertShownRef = useRef(false);
   const planStorageKey = 'olachill_plan';
   const questionUsageStorageKey = 'olachill_question_usage';
+  const topicPanelBySlug: Partial<Record<string, TicketPanelType>> = {
+    'kkday-jp-jr-pass': 'transfer',
+    'kkday-jp-rail-tickets': 'tickets',
+    'kkday-jp-kimono-experience': 'tickets',
+    'kkday-jp-amusement-parks': 'parks',
+    'kkday-jp-cheap-bus': 'bus',
+    'kkday-jp-private-car': 'privatecar',
+    'kkday-global-restaurants': 'food'
+  };
+
+  const quickToolLabels =
+    language === 'vi'
+      ? {
+          train: 'Tra tàu',
+          tickets: 'Hoạt động giải trí',
+          esim: 'eSIM du lịch',
+          parks: 'Vé công viên giải trí',
+          privatecar: 'Thuê xe riêng',
+          bus: 'Xe khách siêu rẻ'
+        }
+      : language === 'ja'
+        ? {
+            train: '乗換案内',
+            tickets: 'アクティビティ',
+            esim: 'eSIM',
+            parks: '遊園地チケット',
+            privatecar: '専用車',
+            bus: '格安バス'
+          }
+        : {
+            train: 'Train',
+            tickets: 'Activities',
+            esim: 'eSIM',
+            parks: 'Parks',
+            privatecar: 'Private Car',
+            bus: 'Cheap Bus'
+        };
+
+  const topicChipLabels =
+    language === 'vi'
+      ? {
+          'kkday-jp-jr-pass': 'Vé giảm giá JR Pass',
+          'kkday-jp-rail-tickets': 'Vé tàu Nhật Bản',
+          'kkday-jp-kimono-experience': 'Trải nghiệm Kimono',
+          'kkday-jp-hot-shopping-coupon': 'Mã giảm giá mua sắm'
+        }
+      : language === 'ja'
+        ? {
+            'kkday-jp-jr-pass': 'JRパス割引',
+            'kkday-jp-rail-tickets': '日本の鉄道チケット',
+            'kkday-jp-kimono-experience': '着物体験',
+            'kkday-jp-hot-shopping-coupon': '買い物クーポン'
+          }
+        : {
+            'kkday-jp-jr-pass': 'JR Pass Deals',
+            'kkday-jp-rail-tickets': 'Japan Rail Tickets',
+            'kkday-jp-kimono-experience': 'Kimono Experience',
+            'kkday-jp-hot-shopping-coupon': 'Shopping Coupons'
+          };
+
+  const getBrandedAffiliateLink = useCallback((slug: string) => {
+    if (typeof window === 'undefined') return `/go/${slug}`;
+    return `${window.location.origin}/go/${slug}`;
+  }, []);
+
+  const openAffiliateSlug = useCallback((slug: string) => {
+    if (typeof window === 'undefined') return;
+    window.open(`/go/${slug}`, '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const openUtilityPanel = useCallback((utility: UtilityType, panel?: TicketPanelType) => {
+    if (utility === 'tickets') {
+      setTicketPanelPreset(panel ?? 'tickets');
+    }
+    setActiveUtility(utility);
+  }, []);
+
+  const quickToolButtons: Array<{ key: string; icon: string; label: string; onClick: () => void }> = [
+    { key: 'train', icon: '🚄', label: quickToolLabels.train, onClick: () => openUtilityPanel('train') },
+    { key: 'tickets', icon: '🎟️', label: quickToolLabels.tickets, onClick: () => openUtilityPanel('tickets', 'tickets') },
+    { key: 'esim', icon: '📶', label: quickToolLabels.esim, onClick: () => openUtilityPanel('esim') },
+    { key: 'parks', icon: '🎢', label: quickToolLabels.parks, onClick: () => openUtilityPanel('tickets', 'parks') },
+    { key: 'privatecar', icon: '🚘', label: quickToolLabels.privatecar, onClick: () => openUtilityPanel('tickets', 'privatecar') },
+    { key: 'bus', icon: '🚌', label: quickToolLabels.bus, onClick: () => openUtilityPanel('tickets', 'bus') }
+  ];
+
+  const getTopicChipLabel = (topic: SuggestedTopic) => {
+    if (topic.slug && topic.slug in topicChipLabels) {
+      return topicChipLabels[topic.slug as keyof typeof topicChipLabels];
+    }
+    return topic.text;
+  };
+
+  const handleSuggestedTopicClick = useCallback((topic: SuggestedTopic) => {
+    if (topic.utility) {
+      openUtilityPanel(topic.utility as UtilityType);
+      return;
+    }
+    if (topic.slug && topic.qrOnly) {
+      setTopicQrTicket({ text: topic.text, slug: topic.slug });
+      return;
+    }
+    if (topic.slug) {
+      const mappedUtility = affiliateTopicUtilityMap[topic.slug];
+      if (mappedUtility === 'tickets') {
+        openUtilityPanel('tickets', topicPanelBySlug[topic.slug] ?? 'tickets');
+        return;
+      }
+      if (mappedUtility === 'coupons') {
+        openUtilityPanel('coupons');
+        return;
+      }
+      openAffiliateSlug(topic.slug);
+      return;
+    }
+    setPrompt(topic.query || topic.text);
+  }, [affiliateTopicUtilityMap, openAffiliateSlug, openUtilityPanel, topicPanelBySlug]);
 
   const getLoginErrorMessage = (error: any) => {
     const code = String(error?.code || '');
@@ -4795,10 +4932,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               className={`w-full px-1 sm:px-0 overflow-x-hidden ${isUtilityWideLayout ? 'max-w-full' : 'max-w-3xl mx-auto'}`}
             >
               {!isUtilityFullscreen ? (
-                <h1 className="hidden md:block text-7xl font-serif leading-[1.1] mb-8 dark:text-white break-words [overflow-wrap:anywhere]">
+                <h1 className="hidden md:block text-[clamp(2.25rem,4.7vw,3.7rem)] font-serif leading-[0.98] mb-4 dark:text-white break-words [overflow-wrap:anywhere]">
                   {t.heroTitle}
                   {t.heroSubtitle ? (
-                    <span className="block italic text-emerald-600 dark:text-emerald-400 mt-1">{t.heroSubtitle}</span>
+                    <span className="block italic text-emerald-600 dark:text-emerald-400 mt-0 leading-[0.95]">{t.heroSubtitle}</span>
                   ) : null}
                 </h1>
               ) : null}
@@ -4818,6 +4955,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                         onClose={() => setActiveUtility(null)} 
                         language={language}
                         fullLayout={isUtilityFullscreen}
+                        initialPanel={ticketPanelPreset}
                       />
                     )}
                     {activeUtility === 'esim' && (
@@ -4842,43 +4980,57 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                   >
                     <div className="md:hidden w-full max-w-[430px] mx-auto">
                       <div className="rounded-[34px] bg-white/80 dark:bg-stone-900/80 border border-stone-100 dark:border-stone-800 shadow-2xl shadow-stone-100/80 dark:shadow-none px-5 py-7">
-                        <div className="flex justify-center mb-7">
-                          <div className="relative w-[188px] h-[188px]">
-                            <div className="absolute top-0 left-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-sky-400 to-cyan-300" />
-                            <div className="absolute top-0 right-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-emerald-400 to-lime-300" />
-                            <div className="absolute bottom-0 left-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-teal-300 to-cyan-200" />
-                            <div className="absolute bottom-0 right-0 w-[94px] h-[94px] rounded-full bg-gradient-to-br from-emerald-300 to-yellow-200" />
-                            <div className="absolute inset-[38px] rounded-3xl bg-white dark:bg-stone-900 border border-white/70 dark:border-stone-700 shadow-xl p-3">
-                              <OlachillLogo className="w-full h-full" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <h2 className="text-left text-[clamp(2rem,10vw,2.6rem)] leading-[1.06] font-black tracking-tight text-stone-900 dark:text-white mb-2 [overflow-wrap:anywhere]">
+                        <h2 className="text-left text-[clamp(1.58rem,6.8vw,1.95rem)] leading-[1.03] font-black tracking-tight text-stone-900 dark:text-white mb-0.5 [overflow-wrap:anywhere]">
                           {t.heroTitle}
                         </h2>
                         {t.heroSubtitle ? (
-                          <p className="text-left text-[clamp(1.45rem,7.2vw,2rem)] leading-[1.1] font-serif italic text-emerald-600 dark:text-emerald-400 mb-4 [overflow-wrap:anywhere]">
+                          <p className="text-left text-[clamp(1.08rem,5vw,1.35rem)] leading-[1.05] font-serif italic text-emerald-600 dark:text-emerald-400 mb-2 [overflow-wrap:anywhere]">
                             {t.heroSubtitle}
                           </p>
                         ) : null}
-                        <p className="text-left text-stone-500 dark:text-stone-400 text-[15px] leading-relaxed mb-6">
+                        <p className="text-left text-stone-500 dark:text-stone-400 text-[13px] leading-[1.4] mb-4">
                           {t.heroDescription}
                         </p>
 
-                        <div className="mb-6 flex flex-col items-start gap-2.5">
-                          {utilityTopics.map((topic: any) => (
+                        <div className="mb-5">
+                          <div className="relative h-[120px] max-w-[320px] mx-auto">
+                            {nonUtilityTopics.slice(0, 4).map((topic, index) => {
+                              const positions = [
+                                'left-0 top-[56px]',
+                                'left-[14%] top-0',
+                                'right-[14%] top-0',
+                                'right-0 top-[56px]'
+                              ];
+                              return (
+                                <button
+                                  key={topic.text}
+                                  onClick={() => handleSuggestedTopicClick(topic)}
+                                  className={`absolute ${positions[index] || positions[0]} inline-flex max-w-[150px] items-center gap-1.5 rounded-full border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-1.5 text-[11px] font-semibold text-stone-700 dark:text-stone-200 shadow-sm`}
+                                  title={topic.text}
+                                >
+                                  <span className="text-sm leading-none shrink-0">{topic.icon || '✨'}</span>
+                                  <span className="truncate">{getTopicChipLabel(topic)}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="mb-5 grid grid-cols-3 gap-2">
+                          {quickToolButtons.map((tool) => (
                             <button
-                              key={topic.utility}
-                              onClick={() => setActiveUtility(topic.utility as any)}
-                              className={`inline-flex items-center gap-2.5 rounded-full px-4 py-3 border shadow-md transition-all ${
-                                activeUtility === topic.utility
+                              key={tool.key}
+                              onClick={tool.onClick}
+                              className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-2 border shadow-sm transition-all ${
+                                (tool.key === 'tickets' && activeUtility === 'tickets' && ticketPanelPreset === 'tickets') ||
+                                (tool.key === 'train' && activeUtility === 'train') ||
+                                (tool.key === 'esim' && activeUtility === 'esim')
                                   ? 'bg-emerald-600 border-emerald-600 text-white'
-                                  : 'bg-white/95 dark:bg-stone-900/95 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-100 hover:border-emerald-500/50'
+                                  : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:border-emerald-500/50'
                               }`}
                             >
-                              <span className="text-lg leading-none">{topic.icon}</span>
-                              <span className="text-[20px] leading-none font-medium">{topic.text}</span>
+                              <span className="text-sm leading-none">{tool.icon}</span>
+                              <span className="text-[11px] leading-none font-semibold whitespace-nowrap">{tool.label}</span>
                             </button>
                           ))}
                         </div>
@@ -4915,17 +5067,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                           </div>
                         </form>
 
-                        <div className="mt-5 flex gap-2.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                          {t.suggestedTopics.filter((topic: any) => !topic.utility).slice(0, 4).map((topic: any) => (
-                            <button
-                              key={topic.text}
-                              onClick={() => setPrompt(topic.query || '')}
-                              className="shrink-0 px-4 py-2 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-sm text-stone-700 dark:text-stone-200 font-semibold"
-                            >
-                              {topic.text}
-                            </button>
-                          ))}
-                        </div>
                       </div>
                     </div>
 
@@ -4956,32 +5097,17 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               
               {!isUtilityFullscreen ? (
                 <div className="hidden md:block w-full max-w-4xl mx-auto overflow-hidden">
-                  <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-8 text-center">{t.popularTopics}</p>
-                  <div className="flex w-full max-w-full gap-4 overflow-x-auto overscroll-x-contain pb-2 px-1 snap-x snap-mandatory">
-                    {t.suggestedTopics.filter((topic: any) => !topic.utility).map((topic: any) => (
-                      <button 
+                  <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-6 text-center">{t.popularTopics}</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {nonUtilityTopics.slice(0, 4).map((topic) => (
+                      <button
                         key={topic.text}
-                        onClick={() => {
-                          if (topic.utility) {
-                            setActiveUtility(topic.utility as any);
-                          } else {
-                            setPrompt(topic.query || '');
-                          }
-                        }}
-                        className="group min-w-[240px] sm:min-w-[300px] p-5 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-4 snap-start"
+                        onClick={() => handleSuggestedTopicClick(topic)}
+                        className="inline-flex items-center gap-2.5 rounded-full border border-stone-200 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 px-5 py-3 text-sm font-semibold text-stone-700 dark:text-stone-200 shadow-sm hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                        title={topic.text}
                       >
-                        <div className="w-12 h-12 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-sm">
-                          {topic.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-stone-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
-                            {topic.text}
-                          </h4>
-                          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
-                            {topic.description}
-                          </p>
-                        </div>
-                        <ArrowRight size={16} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
+                        <span className="text-lg leading-none">{topic.icon || '✨'}</span>
+                        <span>{getTopicChipLabel(topic)}</span>
                       </button>
                     ))}
                   </div>
@@ -5118,27 +5244,25 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         )}
       </main>
 
-      {/* Quick Tools - Always visible at bottom */}
-      <div className="hidden md:block fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
-        <div className="max-w-4xl mx-auto px-3 pointer-events-auto overflow-hidden">
-          <div className="mx-auto flex w-fit max-w-full gap-2 justify-center overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
-          {utilityTopics.map((topic: any) => (
-            <button
-              key={topic.utility}
-              onClick={() => setActiveUtility(topic.utility as any)}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border backdrop-blur-md shadow-lg ${
-                activeUtility === topic.utility
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-200 border-stone-200 dark:border-stone-800 hover:border-emerald-500/50'
-              }`}
-            >
-              <span>{topic.icon}</span>
-              <span className="hidden sm:inline">{topic.text}</span>
-            </button>
-          ))}
+      {/* Quick Tools - Desktop */}
+      {!activeUtility ? (
+        <div className="hidden md:block fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
+          <div className="max-w-5xl mx-auto px-3 pointer-events-auto overflow-hidden">
+            <div className="mx-auto flex w-fit max-w-full gap-2 justify-center overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
+              {quickToolButtons.map((tool) => (
+                <button
+                  key={tool.key}
+                  onClick={tool.onClick}
+                  className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border backdrop-blur-md shadow-lg bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-200 border-stone-200 dark:border-stone-800 hover:border-emerald-500/50"
+                >
+                  <span>{tool.icon}</span>
+                  <span>{tool.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Sticky Input Field */}
       {messages.length > 0 && (
@@ -5246,51 +5370,78 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {topicQrTicket && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setTopicQrTicket(null)}
+              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="relative w-full max-w-sm bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl p-6 text-center shadow-2xl"
+            >
+              <button
+                onClick={() => setTopicQrTicket(null)}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                <X size={18} className="text-stone-400" />
+              </button>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400 mb-1">Olachill QR</p>
+              <h4 className="font-bold text-stone-900 dark:text-white mb-4">{topicQrTicket.text}</h4>
+              <div className="w-56 h-56 mx-auto rounded-2xl bg-stone-50 dark:bg-stone-800 p-3 flex items-center justify-center border border-stone-100 dark:border-stone-700">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(getBrandedAffiliateLink(topicQrTicket.slug))}`}
+                  alt={`${topicQrTicket.text} QR`}
+                  className="w-full h-full rounded-xl"
+                />
+              </div>
+              <p className="text-[11px] text-stone-400 mt-4">
+                {language === 'ja'
+                  ? 'QR を読み込んで Olachill ブランドリンクを開きます。'
+                  : language === 'en'
+                    ? 'Scan QR to open the Olachill branded link.'
+                    : 'Quét QR để mở liên kết thương hiệu Olachill.'}
+              </p>
+              <button
+                onClick={() => openAffiliateSlug(topicQrTicket.slug)}
+                className="mt-4 w-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 py-3 rounded-xl text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
+              >
+                {language === 'ja' ? 'リンクを開く' : language === 'en' ? 'Open Link' : 'Mở liên kết'}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Footer */}
-      <footer className="bg-stone-50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 py-20 px-6">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
-          <div id="footer-about" className="col-span-2">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-800 dark:to-stone-700 rounded-lg border border-emerald-100 dark:border-stone-700 p-1">
+      <footer className="bg-stone-50 dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 py-7 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div id="footer-about" className="sr-only" />
+          <div id="footer-product" className="sr-only" />
+          <div id="footer-support" className="sr-only" />
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-800 dark:to-stone-700 rounded-lg border border-emerald-100 dark:border-stone-700 p-1">
                 <OlachillLogo className="w-full h-full" />
               </div>
-              <span className="font-serif italic text-2xl tracking-tight dark:text-white">{t.appName}</span>
+              <span className="font-serif italic text-lg tracking-tight dark:text-white">{t.appName}</span>
+              <a
+                href="https://olachill.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                Visit olachill.com
+              </a>
             </div>
-            <p className="text-stone-400 dark:text-stone-500 text-sm max-w-xs leading-relaxed">
-              {t.footerDescription}
-            </p>
-            <a 
-              href="https://olachill.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-block mt-4 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
-            >
-              Visit olachill.com
-            </a>
+            <p className="text-xs text-stone-400 dark:text-stone-500">© 2026 {t.appName}. {t.allRightsReserved}</p>
           </div>
-          <div id="footer-product">
-            <h5 className="font-medium mb-6 dark:text-white">{t.product}</h5>
-            <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
-              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.features}</a></li>
-              <li>
-                <button onClick={() => setShowUpgradeModal(true)} className="hover:text-stone-900 dark:hover:text-white">
-                  {t.pricing}
-                </button>
-              </li>
-              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.downloadApp}</a></li>
-            </ul>
-          </div>
-          <div id="footer-support">
-            <h5 className="font-medium mb-6 dark:text-white">{t.support}</h5>
-            <ul className="space-y-4 text-sm text-stone-400 dark:text-stone-500">
-              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.helpCenter}</a></li>
-              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.contact}</a></li>
-              <li><a href="#" className="hover:text-stone-900 dark:hover:text-white">{t.terms}</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-stone-200 dark:border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-stone-400 dark:text-stone-500">© 2026 {t.appName}. {t.allRightsReserved}</p>
         </div>
       </footer>
     </div>
