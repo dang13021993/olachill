@@ -2258,7 +2258,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const suggestedTopics = t.suggestedTopics;
   const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility);
 
-  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'secondhand' | 'esim'>(null);
+  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'esim'>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -3088,12 +3088,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                     )}
                     {activeUtility === 'tickets' && (
                       <TicketSearch 
-                        onClose={() => setActiveUtility(null)} 
-                        language={language}
-                      />
-                    )}
-                    {activeUtility === 'secondhand' && (
-                      <SecondHandSearch 
                         onClose={() => setActiveUtility(null)} 
                         language={language}
                       />
