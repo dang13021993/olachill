@@ -21,6 +21,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const MOBILE_UA_REGEX = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
 
@@ -32,6 +33,16 @@ const shouldUseRedirectLogin = () => {
   const isMobile = MOBILE_UA_REGEX.test(ua);
   const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || (window.navigator as any).standalone === true;
   return isMobile || isStandalone;
+};
+
+const isIOSSafariBrowser = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const ua = window.navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isWebKitSafari = /safari/.test(ua) && !/crios|fxios|edgios|opios/.test(ua);
+  return isIOS && isWebKitSafari;
 };
 
 const POPUP_FALLBACK_CODES = new Set([
@@ -84,17 +95,16 @@ void ensureAuthPersistence();
 export const loginWithGoogle = async () => {
   await ensureAuthPersistence();
 
-  if (shouldUseRedirectLogin()) {
-    await signInWithRedirect(auth, googleProvider);
-    return null;
-  }
-
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     const code = String(error?.code || '');
+    const allowRedirectFallback = shouldUseRedirectLogin() && !isIOSSafariBrowser();
     if (!AUTH_CONFIGURATION_CODES.has(code) && (POPUP_FALLBACK_CODES.has(code) || code.startsWith('auth/'))) {
+      if (!allowRedirectFallback) {
+        throw error;
+      }
       try {
         await signInWithRedirect(auth, googleProvider);
         return null;
