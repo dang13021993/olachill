@@ -96,7 +96,7 @@ gcloud run services update-traffic "$SERVICE" --to-latest --region "$REGION"
 
 Cloud Run variables:
 - `GEMINI_API_KEY`
-- `GEMINI_MODEL` (khuyen nghi: `gemini-1.5-flash`)
+- `GEMINI_MODEL` (khuyen nghi: `gemini-2.0-flash`)
 - `CHECKOUT_BASIC_URL`
 - `CHECKOUT_PRO_URL`
 - `ESIM_PROVIDER_BASE_URL`

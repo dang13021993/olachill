@@ -504,11 +504,66 @@ function resolveTargetLanguage(language: string): string {
   return "VIETNAMESE (Tiếng Việt)";
 }
 
-const DEFAULT_GEMINI_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-3-flash-preview"];
+type GeminiAttempt = {
+  model: string;
+  reason: string;
+  statusCode?: number;
+};
+
+class GeminiFallbackError extends Error {
+  attempts: GeminiAttempt[];
+
+  constructor(attempts: GeminiAttempt[]) {
+    super("All configured AI models failed");
+    this.name = "GeminiFallbackError";
+    this.attempts = attempts;
+  }
+}
+
+const DEFAULT_GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-3-flash-preview"];
+
+function parseModelList(raw: string): string[] {
+  return raw
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function extractStatusCode(reason: string): number | undefined {
+  const cleaned = String(reason || "");
+  const match =
+    cleaned.match(/"code"\s*:\s*(\d{3})/i) ||
+    cleaned.match(/\bstatus(?:\s*code)?\s*[:=]?\s*(\d{3})\b/i) ||
+    cleaned.match(/\bHTTP\s*(\d{3})\b/i);
+  if (!match?.[1]) return undefined;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return undefined;
+  return value;
+}
+
+function isQuotaAttempt(attempt: GeminiAttempt): boolean {
+  const reason = attempt.reason.toLowerCase();
+  return (
+    attempt.statusCode === 429 ||
+    reason.includes("quota") ||
+    reason.includes("resource_exhausted") ||
+    reason.includes("rate limit")
+  );
+}
+
+function isModelNotFoundAttempt(attempt: GeminiAttempt): boolean {
+  const reason = attempt.reason.toLowerCase();
+  return (
+    attempt.statusCode === 404 ||
+    reason.includes("not found") ||
+    reason.includes("unsupported")
+  );
+}
 
 function getGeminiModelCandidates(): string[] {
   const configured = String(process.env.GEMINI_MODEL || "").trim();
-  const merged = [configured, ...DEFAULT_GEMINI_MODELS].filter(Boolean);
+  const configuredList = parseModelList(String(process.env.GEMINI_MODEL_CANDIDATES || ""));
+  const merged = [configured, ...configuredList, ...DEFAULT_GEMINI_MODELS].filter(Boolean);
   return Array.from(new Set(merged));
 }
 
@@ -516,7 +571,7 @@ async function generateGeminiContentWithFallback(
   ai: GoogleGenAI,
   payload: { contents: string; config?: any }
 ): Promise<{ response: any; model: string }> {
-  const attempts: string[] = [];
+  const attempts: GeminiAttempt[] = [];
 
   for (const model of getGeminiModelCandidates()) {
     try {
@@ -528,11 +583,15 @@ async function generateGeminiContentWithFallback(
       return { response, model };
     } catch (error: any) {
       const reason = String(error?.message || error || "unknown error").replace(/\s+/g, " ").trim();
-      attempts.push(`${model}: ${reason.slice(0, 180)}`);
+      attempts.push({
+        model,
+        reason: reason.slice(0, 240),
+        statusCode: extractStatusCode(reason)
+      });
     }
   }
 
-  throw new Error(`All configured AI models failed. ${attempts.join(" | ")}`.slice(0, 900));
+  throw new GeminiFallbackError(attempts);
 }
 
 function buildHistoryContext(history: Array<{ role: "user" | "model"; text: string }>): string {
@@ -574,6 +633,247 @@ function parseJsonFromAiText(rawText: string): any {
   }
 
   throw new Error("AI returned invalid JSON format");
+}
+
+type FallbackLanguage = "vi" | "en" | "ja";
+type DestinationKey = "tokyo" | "osaka" | "kyoto" | "japan";
+
+function inferDestinationKey(prompt: string): DestinationKey {
+  const text = String(prompt || "").toLowerCase();
+  if (/tokyo|東京/.test(text)) return "tokyo";
+  if (/osaka|大阪/.test(text)) return "osaka";
+  if (/kyoto|京都/.test(text)) return "kyoto";
+  return "japan";
+}
+
+function inferDayCount(prompt: string): number {
+  const text = String(prompt || "");
+  const match = text.match(/(\d{1,2})\s*(?:ngày|day|days|日|泊)/i);
+  if (match?.[1]) {
+    const days = Number(match[1]);
+    if (Number.isFinite(days)) {
+      return Math.max(1, Math.min(10, days));
+    }
+  }
+  if (/week|tuần|週間/i.test(text)) return 7;
+  return 3;
+}
+
+function looksLikeItineraryRequest(prompt: string): boolean {
+  const text = String(prompt || "").toLowerCase();
+  return /lịch trình|itinerary|kế hoạch|plan|đi đâu|去哪|where to go|ngày|days?|日/.test(text);
+}
+
+function resolveDestinationName(language: FallbackLanguage, key: DestinationKey): string {
+  const names = {
+    vi: {
+      tokyo: "Tokyo, Nhật Bản",
+      osaka: "Osaka, Nhật Bản",
+      kyoto: "Kyoto, Nhật Bản",
+      japan: "Nhật Bản"
+    },
+    en: {
+      tokyo: "Tokyo, Japan",
+      osaka: "Osaka, Japan",
+      kyoto: "Kyoto, Japan",
+      japan: "Japan"
+    },
+    ja: {
+      tokyo: "東京",
+      osaka: "大阪",
+      kyoto: "京都",
+      japan: "日本"
+    }
+  } as const;
+  return names[language][key];
+}
+
+function getFallbackAreas(key: DestinationKey): string[] {
+  if (key === "tokyo") return ["Asakusa - Ueno", "Shibuya - Harajuku", "Shinjuku - Odaiba", "Ginza - Tokyo Station", "Kamakura Day Trip"];
+  if (key === "osaka") return ["Namba - Dotonbori", "Osaka Castle - Umeda", "Shinsekai - Tennoji", "Universal Studios Japan", "Kobe / Nara Day Trip"];
+  if (key === "kyoto") return ["Gion - Higashiyama", "Arashiyama", "Fushimi Inari", "Northern Kyoto", "Uji / Nara Day Trip"];
+  return ["Tokyo", "Kyoto", "Osaka", "Nara", "Hakone"];
+}
+
+function buildFallbackSummary(language: FallbackLanguage, destination: string): string {
+  if (language === "ja") {
+    return [
+      `AIが混雑しているため、${destination}の暫定プランを表示しています。`,
+      "- まずは主要エリアを回る短期プランを優先。",
+      "- 交通系ICカードを先に準備すると移動が楽です。",
+      "- マップ: [Google Maps](https://www.google.com/maps/search/?api=1&query=Japan+travel+spots)"
+    ].join("\n");
+  }
+  if (language === "en") {
+    return [
+      `AI is temporarily busy, so here is a quick fallback plan for ${destination}.`,
+      "- Focus on major areas first to save time.",
+      "- Prepare an IC transport card before moving between districts.",
+      "- Map: [Google Maps](https://www.google.com/maps/search/?api=1&query=Japan+travel+spots)"
+    ].join("\n");
+  }
+  return [
+    `Hệ thống AI đang quá tải tạm thời, đây là lịch trình dự phòng cho ${destination}.`,
+    "- Ưu tiên các khu chính để tối ưu thời gian.",
+    "- Chuẩn bị thẻ IC (Suica/PASMO/ICOCA) trước khi di chuyển.",
+    "- Bản đồ: [Google Maps](https://www.google.com/maps/search/?api=1&query=Japan+travel+spots)"
+  ].join("\n");
+}
+
+function buildFallbackTips(language: FallbackLanguage): string[] {
+  if (language === "ja") {
+    return [
+      "朝夕ラッシュの時間帯を避けると快適です。",
+      "現金とカードを両方用意してください。",
+      "人気スポットは前日までに予約がおすすめです。"
+    ];
+  }
+  if (language === "en") {
+    return [
+      "Avoid train rush hours (7:30-9:30 and 17:00-19:00).",
+      "Keep both card and some cash for small local shops.",
+      "Book popular attractions at least 1 day in advance."
+    ];
+  }
+  return [
+    "Tránh khung giờ cao điểm tàu (7:30-9:30 và 17:00-19:00).",
+    "Nên chuẩn bị cả thẻ và tiền mặt cho quán nhỏ.",
+    "Điểm tham quan nổi tiếng nên đặt trước ít nhất 1 ngày."
+  ];
+}
+
+function buildFallbackSuggestions(language: FallbackLanguage, key: DestinationKey): Array<{ title: string; description: string; query: string; icon: string }> {
+  const destination = resolveDestinationName(language, key);
+  if (language === "ja") {
+    return [
+      { title: "電車ルートを確認", description: "主要駅間の移動時間を確認します", query: `${destination} 鉄道 ルート`, icon: "🚆" },
+      { title: "おすすめeSIM", description: "滞在日数に合う通信プラン", query: `${destination} 旅行 eSIM おすすめ`, icon: "📶" },
+      { title: "観光チケット", description: "人気スポットの予約", query: `${destination} チケット 人気`, icon: "🎟️" }
+    ];
+  }
+  if (language === "en") {
+    return [
+      { title: "Train Routes", description: "Check route + estimated fare", query: `${destination} train routes`, icon: "🚆" },
+      { title: "Best eSIM Plans", description: "Choose a data plan for your trip", query: `${destination} esim plan`, icon: "📶" },
+      { title: "Top Tickets", description: "Book popular attractions", query: `${destination} attraction tickets`, icon: "🎟️" }
+    ];
+  }
+  return [
+    { title: "Tra tuyến tàu", description: "Xem nhanh tuyến + giá ước tính", query: `${destination} tuyến tàu`, icon: "🚆" },
+    { title: "Chọn eSIM phù hợp", description: "Gợi ý gói data theo số ngày", query: `${destination} eSIM du lịch`, icon: "📶" },
+    { title: "Vé tham quan nổi bật", description: "Mở nhanh danh sách vé phổ biến", query: `${destination} vé tham quan`, icon: "🎟️" }
+  ];
+}
+
+function buildFallbackTravelResult(prompt: string, languageInput: string) {
+  const language: FallbackLanguage = languageInput === "ja" ? "ja" : languageInput === "en" ? "en" : "vi";
+  const destinationKey = inferDestinationKey(prompt);
+  const destination = resolveDestinationName(language, destinationKey);
+  const shouldBuildPlan = looksLikeItineraryRequest(prompt);
+  const dayCount = inferDayCount(prompt);
+  const areas = getFallbackAreas(destinationKey);
+  const tips = buildFallbackTips(language);
+  const suggestions = buildFallbackSuggestions(language, destinationKey);
+
+  if (!shouldBuildPlan) {
+    const chatSummary =
+      language === "ja"
+        ? `${destination}についてお手伝いします。質問を具体化すると、より正確な提案ができます。`
+        : language === "en"
+          ? `I can help with ${destination}. If you add budget, days, and interests, results will be more precise.`
+          : `Tôi có thể hỗ trợ về ${destination}. Bạn thêm ngân sách, số ngày và sở thích để nhận gợi ý chính xác hơn.`;
+
+    return {
+      type: "chat",
+      destination,
+      summary: chatSummary,
+      days: [],
+      tips,
+      suggestions,
+      source: "server-fallback"
+    };
+  }
+
+  const dayLabel = language === "ja" ? "日目" : language === "en" ? "Day" : "Ngày";
+  const itinerarySummary = Array.from({ length: dayCount }, (_, idx) => {
+    const area = areas[idx % areas.length];
+    return {
+      day: language === "ja" ? `${idx + 1}${dayLabel}` : `${dayLabel} ${idx + 1}`,
+      area,
+      focus:
+        language === "ja"
+          ? "散策 + グルメ + 写真スポット"
+          : language === "en"
+            ? "Walking + food + photo spots"
+            : "Đi bộ + ẩm thực + điểm chụp ảnh"
+    };
+  });
+
+  const days = Array.from({ length: dayCount }, (_, idx) => {
+    const area = areas[idx % areas.length];
+    return {
+      day: idx + 1,
+      title:
+        language === "ja"
+          ? `${area} エリア`
+          : language === "en"
+            ? `${area} area`
+            : `Khu vực ${area}`,
+      activities: [
+        {
+          time: "08:30",
+          activity: language === "ja" ? "朝の散策" : language === "en" ? "Morning walk" : "Dạo sáng",
+          location: area,
+          description:
+            language === "ja"
+              ? "主要スポットを先に回り、混雑を避けます。"
+              : language === "en"
+                ? "Start with main attractions to avoid peak crowds."
+                : "Đi các điểm nổi bật sớm để tránh đông.",
+          googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(area)}`
+        },
+        {
+          time: "12:30",
+          activity: language === "ja" ? "ランチ" : language === "en" ? "Local lunch" : "Ăn trưa đặc sản",
+          location: area,
+          description:
+            language === "ja"
+              ? "人気店は当日整理券や事前予約を確認してください。"
+              : language === "en"
+                ? "Check queue ticket or reservation for popular restaurants."
+                : "Quán nổi tiếng nên kiểm tra xếp hàng/đặt chỗ trước.",
+          googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${area} food`)}`
+        },
+        {
+          time: "19:00",
+          activity: language === "ja" ? "夜の散策" : language === "en" ? "Evening highlights" : "Khám phá buổi tối",
+          location: area,
+          description:
+            language === "ja"
+              ? "夜景スポットとショッピング街を組み合わせるのがおすすめ。"
+              : language === "en"
+                ? "Combine night views and shopping streets for this slot."
+                : "Kết hợp điểm ngắm đêm và phố mua sắm trong khung này.",
+          googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${area} night view`)}`
+        }
+      ]
+    };
+  });
+
+  return {
+    type: "plan",
+    destination,
+    summary: buildFallbackSummary(language, destination),
+    itinerarySummary,
+    days,
+    tips,
+    hotels: [],
+    tickets: [],
+    transportation: [],
+    events: [],
+    suggestions,
+    source: "server-fallback"
+  };
 }
 
 function resolveProviderEndpoint(baseUrl: string, endpointOrUrl: string): URL {
@@ -769,7 +1069,9 @@ async function startServer() {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(503).json({ error: "GEMINI_API_KEY is not configured on server" });
+      console.warn("travel/generate fallback: GEMINI_API_KEY missing");
+      const fallback = buildFallbackTravelResult(prompt, language);
+      res.json(fallback);
       return;
     }
 
@@ -915,13 +1217,30 @@ async function startServer() {
         const parsed = parseJsonFromAiText(String(response.text || ""));
         res.json(parsed);
       } catch (parseError) {
-        const detail = parseError instanceof Error ? parseError.message : "AI returned invalid JSON format";
-        res.status(502).json({ error: detail });
+        console.warn("travel/generate parse fallback:", parseError);
+        const fallback = buildFallbackTravelResult(prompt, language);
+        res.json(fallback);
       }
     } catch (error) {
       console.error("travel/generate failed:", error);
-      const detail = error instanceof Error ? error.message : "Failed to generate travel plan from AI";
-      res.status(502).json({ error: detail.slice(0, 500) });
+      if (error instanceof GeminiFallbackError) {
+        const quotaFailures = error.attempts.filter((attempt) => isQuotaAttempt(attempt)).length;
+        const notFoundFailures = error.attempts.filter((attempt) => isModelNotFoundAttempt(attempt)).length;
+        console.warn(
+          "travel/generate fallback used due to model failures",
+          JSON.stringify({
+            attempts: error.attempts.map((attempt) => ({
+              model: attempt.model,
+              statusCode: attempt.statusCode,
+              reason: attempt.reason.slice(0, 120)
+            })),
+            quotaFailures,
+            notFoundFailures
+          })
+        );
+      }
+      const fallback = buildFallbackTravelResult(prompt, language);
+      res.json(fallback);
     }
   });
 
@@ -936,7 +1255,12 @@ async function startServer() {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(503).json({ error: "GEMINI_API_KEY is not configured on server" });
+      const fallbackText = language === "ja"
+        ? "AIが混雑中のため詳細情報を取得できません。少し時間をおいて再試行してください。"
+        : language === "en"
+          ? "AI is currently busy, so detailed place info is unavailable. Please retry shortly."
+          : "AI đang quá tải nên chưa lấy được thông tin chi tiết địa điểm. Vui lòng thử lại sau ít phút.";
+      res.json({ text: fallbackText, grounding: [] });
       return;
     }
 

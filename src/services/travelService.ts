@@ -12,16 +12,37 @@ const DIRECT_GEMINI_MODEL = (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemi
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 
-const parseApiErrorMessage = async (resp: Response) => {
+const mapServerAiErrorMessage = (rawMessage: string, language: 'en' | 'ja' | 'vi') => {
+  const raw = String(rawMessage || '').toLowerCase();
+  const quotaLike = raw.includes('quota') || raw.includes('429') || raw.includes('resource_exhausted') || raw.includes('rate limit');
+  const modelLike = raw.includes('model') || raw.includes('all configured ai models failed') || raw.includes('not found');
+  const keyLike = raw.includes('gemini_api_key') || raw.includes('api key');
+
+  if (quotaLike || modelLike || keyLike) {
+    if (language === 'ja') {
+      return 'AIが混雑中のため、暫定プランを表示しました。数分後に再生成すると改善する場合があります。';
+    }
+    if (language === 'en') {
+      return 'AI is currently overloaded, so a fallback plan was shown. Please retry in a few minutes.';
+    }
+    return 'AI đang quá tải, hệ thống đã hiển thị kế hoạch dự phòng. Bạn thử lại sau vài phút nhé.';
+  }
+
+  if (language === 'ja') return 'サーバーAI接続エラー。しばらくして再試行してください。';
+  if (language === 'en') return 'Server AI connection error. Please try again shortly.';
+  return 'Lỗi kết nối AI phía máy chủ. Vui lòng thử lại sau.';
+};
+
+const parseApiErrorMessage = async (resp: Response, language: 'en' | 'ja' | 'vi') => {
   try {
     const data = await resp.json();
     if (typeof data?.error === "string" && data.error.trim()) {
-      return data.error;
+      return mapServerAiErrorMessage(data.error, language);
     }
   } catch {
     // Ignore JSON parse errors and fallback below.
   }
-  return `Request failed with status ${resp.status}`;
+  return mapServerAiErrorMessage(`Request failed with status ${resp.status}`, language);
 };
 
 const generateTravelPlanViaServer = async (
@@ -36,7 +57,7 @@ const generateTravelPlanViaServer = async (
   });
 
   if (!resp.ok) {
-    throw new Error(await parseApiErrorMessage(resp));
+    throw new Error(await parseApiErrorMessage(resp, language));
   }
 
   return await resp.json() as TravelPlan;
@@ -212,11 +233,7 @@ export const generateTravelPlan = async (
       return parsed;
     } catch (error: any) {
       console.error("Server-side generation failed:", error);
-      const message = error?.message || (language === 'ja'
-        ? "サーバーAI接続エラー。しばらくして再試行してください。"
-        : language === 'en'
-          ? "Server AI connection error. Please try again shortly."
-          : "Lỗi kết nối AI phía máy chủ. Vui lòng thử lại sau.");
+      const message = mapServerAiErrorMessage(String(error?.message || ''), language);
       throw new Error(message);
     }
   }

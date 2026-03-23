@@ -58,7 +58,6 @@ import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 // const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || '';
 // const hasValidKey = Boolean(GOOGLE_MAPS_API_KEY) && GOOGLE_MAPS_API_KEY !== 'YOUR_API_KEY';
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { translations, Language, SuggestedTopic } from './translations';
 
 // --- Types ---
@@ -410,39 +409,46 @@ const CafeSearch = ({ onClose, language }: { onClose: () => void, language: Lang
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const localCafeData = {
+    vi: [
+      { name: 'Koffee Mameya Kakeru', type: 'Specialty Cafe', priceRange: '$$$', description: 'Quầy bar cà phê nổi tiếng tại Tokyo, phù hợp trải nghiệm pour-over.', location: 'Omotesando, Tokyo', tags: ['coffee', 'cafe', 'tokyo', 'specialty'] },
+      { name: 'Fuglen Asakusa', type: 'Cafe & Retro', priceRange: '$$', description: 'Không gian kiểu Bắc Âu, đẹp để chụp ảnh, gần Senso-ji.', location: 'Asakusa, Tokyo', tags: ['cafe', 'asakusa', 'tokyo', 'photo'] },
+      { name: 'Menya Inoichi', type: 'Ramen', priceRange: '$$', description: 'Ramen thanh vị nổi tiếng ở Kyoto, thường hết sớm.', location: 'Shimogyo, Kyoto', tags: ['ramen', 'kyoto', 'food'] },
+      { name: 'Gyukatsu Motomura', type: 'Wagyu', priceRange: '$$$', description: 'Set gyukatsu bò Nhật, hợp bữa trưa nhanh ở khu trung tâm.', location: 'Namba, Osaka', tags: ['wagyu', 'osaka', 'beef'] },
+      { name: 'Saryo Tsujiri', type: 'Matcha Dessert', priceRange: '$$', description: 'Tráng miệng matcha truyền thống, vị đậm, nhiều chi nhánh.', location: 'Gion, Kyoto', tags: ['matcha', 'dessert', 'kyoto'] },
+      { name: 'Uoriki Kaisen Sushi', type: 'Sushi', priceRange: '$$$', description: 'Sushi tươi theo mùa, phù hợp cho bữa tối.', location: 'Tokyo Station', tags: ['sushi', 'tokyo', 'seafood'] }
+    ],
+    en: [
+      { name: 'Koffee Mameya Kakeru', type: 'Specialty Cafe', priceRange: '$$$', description: 'Top coffee counter in Tokyo, great for guided pour-over tasting.', location: 'Omotesando, Tokyo', tags: ['coffee', 'cafe', 'tokyo', 'specialty'] },
+      { name: 'Fuglen Asakusa', type: 'Cafe & Retro', priceRange: '$$', description: 'Scandinavian-style cafe near Senso-ji, strong photo spot.', location: 'Asakusa, Tokyo', tags: ['cafe', 'asakusa', 'tokyo', 'photo'] },
+      { name: 'Menya Inoichi', type: 'Ramen', priceRange: '$$', description: 'Popular light ramen in Kyoto, often sold out early.', location: 'Shimogyo, Kyoto', tags: ['ramen', 'kyoto', 'food'] },
+      { name: 'Gyukatsu Motomura', type: 'Wagyu', priceRange: '$$$', description: 'Famous gyukatsu set, convenient for central Osaka lunches.', location: 'Namba, Osaka', tags: ['wagyu', 'osaka', 'beef'] },
+      { name: 'Saryo Tsujiri', type: 'Matcha Dessert', priceRange: '$$', description: 'Classic matcha dessert brand with rich tea flavor.', location: 'Gion, Kyoto', tags: ['matcha', 'dessert', 'kyoto'] },
+      { name: 'Uoriki Kaisen Sushi', type: 'Sushi', priceRange: '$$$', description: 'Seasonal sushi selection, great for dinner.', location: 'Tokyo Station', tags: ['sushi', 'tokyo', 'seafood'] }
+    ],
+    ja: [
+      { name: 'Koffee Mameya Kakeru', type: 'スペシャルティカフェ', priceRange: '$$$', description: '東京の人気コーヒーカウンター。ハンドドリップ体験向け。', location: '東京・表参道', tags: ['coffee', 'cafe', 'tokyo', 'specialty'] },
+      { name: 'Fuglen Asakusa', type: 'カフェ', priceRange: '$$', description: '浅草寺近くの北欧スタイル。写真映えしやすい店舗。', location: '東京・浅草', tags: ['cafe', 'asakusa', 'tokyo', 'photo'] },
+      { name: '麺屋 猪一', type: 'ラーメン', priceRange: '$$', description: '京都で人気のあっさり系ラーメン。早めの来店がおすすめ。', location: '京都・下京区', tags: ['ramen', 'kyoto', 'food'] },
+      { name: '牛かつもと村', type: '和牛', priceRange: '$$$', description: '和牛カツ定食が人気。大阪中心地で使いやすい。', location: '大阪・難波', tags: ['wagyu', 'osaka', 'beef'] },
+      { name: '茶寮都路里', type: '抹茶スイーツ', priceRange: '$$', description: '定番の抹茶デザート。濃い味の抹茶が魅力。', location: '京都・祇園', tags: ['matcha', 'dessert', 'kyoto'] },
+      { name: '魚力海鮮寿司', type: '寿司', priceRange: '$$$', description: '季節のネタが楽しめる寿司。夜ごはんにおすすめ。', location: '東京駅', tags: ['sushi', 'tokyo', 'seafood'] }
+    ]
+  } as const;
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `Find best cafes and restaurants in Japan for: ${query}. 
-      Provide 5 recommendations with: name, type, priceRange (e.g. $, $$, $$$), description, and location.
-      Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                type: { type: Type.STRING },
-                priceRange: { type: Type.STRING },
-                description: { type: Type.STRING },
-                location: { type: Type.STRING }
-              },
-              required: ["name", "type", "priceRange", "description", "location"]
-            }
-          }
-        }
+      const keyword = query.trim().toLowerCase();
+      const source = localCafeData[language];
+      const matched = source.filter((item) => {
+        const haystack = `${item.name} ${item.type} ${item.description} ${item.location} ${item.tags.join(' ')}`.toLowerCase();
+        return haystack.includes(keyword);
       });
-      setResults(JSON.parse(response.text));
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      setResults((matched.length > 0 ? matched : source).slice(0, 5));
     } catch (e) {
       console.error(e);
     } finally {
@@ -522,38 +528,46 @@ const SecondHandSearch = ({ onClose, language }: { onClose: () => void, language
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const localSecondHandData = {
+    vi: [
+      { name: 'Hard Off Akihabara', type: 'Electronics', description: 'Nhiều máy ảnh, lens và đồ điện tử đã qua sử dụng.', location: 'Akihabara, Tokyo', tags: ['camera', 'electronics', 'tokyo'] },
+      { name: 'Book Off Super Bazaar', type: 'Fashion & Books', description: 'Đa dạng quần áo, sách, đĩa và phụ kiện giá mềm.', location: 'Ikebukuro, Tokyo', tags: ['fashion', 'book', 'tokyo'] },
+      { name: '2nd Street Shinsaibashi', type: 'Streetwear', description: 'Đồ thời trang local/JDM và sneaker cũ chất lượng.', location: 'Shinsaibashi, Osaka', tags: ['fashion', 'sneaker', 'osaka'] },
+      { name: 'Mandarake Complex', type: 'Anime Figure', description: 'Điểm săn figure, manga, goods anime nổi tiếng.', location: 'Akihabara, Tokyo', tags: ['anime', 'figure', 'tokyo'] },
+      { name: 'Daikokuya Shinjuku', type: 'Luxury Bag', description: 'Túi/đồng hồ hàng hiệu đã qua sử dụng, có bảo hành cửa hàng.', location: 'Shinjuku, Tokyo', tags: ['luxury', 'bag', 'watch'] },
+      { name: 'Ishibashi Music Umeda', type: 'Instrument', description: 'Nhiều guitar và nhạc cụ cũ, phù hợp test tại chỗ.', location: 'Umeda, Osaka', tags: ['instrument', 'guitar', 'osaka'] }
+    ],
+    en: [
+      { name: 'Hard Off Akihabara', type: 'Electronics', description: 'Strong selection of used cameras, lenses, and gadgets.', location: 'Akihabara, Tokyo', tags: ['camera', 'electronics', 'tokyo'] },
+      { name: 'Book Off Super Bazaar', type: 'Fashion & Books', description: 'Large inventory of used clothes, books, and media.', location: 'Ikebukuro, Tokyo', tags: ['fashion', 'book', 'tokyo'] },
+      { name: '2nd Street Shinsaibashi', type: 'Streetwear', description: 'Good spot for local fashion and second-hand sneakers.', location: 'Shinsaibashi, Osaka', tags: ['fashion', 'sneaker', 'osaka'] },
+      { name: 'Mandarake Complex', type: 'Anime Figure', description: 'Iconic destination for figures, manga, and anime goods.', location: 'Akihabara, Tokyo', tags: ['anime', 'figure', 'tokyo'] },
+      { name: 'Daikokuya Shinjuku', type: 'Luxury Bag', description: 'Trusted chain for pre-owned luxury bags and watches.', location: 'Shinjuku, Tokyo', tags: ['luxury', 'bag', 'watch'] },
+      { name: 'Ishibashi Music Umeda', type: 'Instrument', description: 'Used guitars and instruments with in-store testing.', location: 'Umeda, Osaka', tags: ['instrument', 'guitar', 'osaka'] }
+    ],
+    ja: [
+      { name: 'ハードオフ秋葉原', type: '家電', description: '中古カメラ・レンズ・電子機器が豊富。', location: '東京・秋葉原', tags: ['camera', 'electronics', 'tokyo'] },
+      { name: 'ブックオフ スーパーバザー', type: '古着・書籍', description: '古着、書籍、メディアをまとめて探せます。', location: '東京・池袋', tags: ['fashion', 'book', 'tokyo'] },
+      { name: '2nd STREET 心斎橋', type: 'ストリート系', description: '古着とスニーカーの在庫が安定している店舗。', location: '大阪・心斎橋', tags: ['fashion', 'sneaker', 'osaka'] },
+      { name: 'まんだらけコンプレックス', type: 'アニメフィギュア', description: 'フィギュア・漫画・グッズの定番スポット。', location: '東京・秋葉原', tags: ['anime', 'figure', 'tokyo'] },
+      { name: '大黒屋 新宿', type: 'ブランド品', description: '中古ブランドバッグ・時計の取り扱いが多い。', location: '東京・新宿', tags: ['luxury', 'bag', 'watch'] },
+      { name: 'イシバシ楽器 梅田', type: '楽器', description: '中古ギターや楽器を試奏しながら選べます。', location: '大阪・梅田', tags: ['instrument', 'guitar', 'osaka'] }
+    ]
+  } as const;
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `Find best second-hand shops or areas in Japan for: ${query}. 
-      Provide 5 recommendations with: name, type (e.g. Hard Off, Book Off, local area), description, and location.
-      Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                type: { type: Type.STRING },
-                description: { type: Type.STRING },
-                location: { type: Type.STRING }
-              },
-              required: ["name", "type", "description", "location"]
-            }
-          }
-        }
+      const keyword = query.trim().toLowerCase();
+      const source = localSecondHandData[language];
+      const matched = source.filter((item) => {
+        const haystack = `${item.name} ${item.type} ${item.description} ${item.location} ${item.tags.join(' ')}`.toLowerCase();
+        return haystack.includes(keyword);
       });
-      setResults(JSON.parse(response.text));
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      setResults((matched.length > 0 ? matched : source).slice(0, 5));
     } catch (e) {
       console.error(e);
     } finally {
