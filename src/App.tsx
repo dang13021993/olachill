@@ -2257,7 +2257,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   // Suggested topics based on popular queries and AI strengths
   const suggestedTopics = t.suggestedTopics;
 
-  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'esim'>(null);
+  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'cafe' | 'secondhand' | 'esim'>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -3083,13 +3083,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                       <TrainSearch 
                         onClose={() => setActiveUtility(null)} 
                         language={language}
-                      />
-                    )}
-                    {activeUtility === 'bus' && (
-                      <TrainSearch
-                        onClose={() => setActiveUtility(null)}
-                        language={language}
-                        initialMode="bus"
                       />
                     )}
                     {activeUtility === 'tickets' && (

@@ -5,7 +5,7 @@ export interface SuggestedTopic {
   description: string;
   icon: string;
   query?: string;
-  utility?: 'train' | 'bus' | 'tickets' | 'cafe' | 'secondhand' | 'esim';
+  utility?: 'train' | 'tickets' | 'cafe' | 'secondhand' | 'esim';
 }
 
 export const translations = {
@@ -151,7 +151,6 @@ export const translations = {
     },
     suggestedTopics: [
       { text: 'Train Search', description: 'Check routes & prices', utility: 'train', icon: '🚄' },
-      { text: 'Bus Search', description: 'Find Japan highway buses', utility: 'bus', icon: '🚌' },
       { text: 'Sightseeing Tickets', description: 'Book Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIM Data', description: 'Buy Japan eSIM quickly', utility: 'esim', icon: '📶' },
       { text: 'Cafe & Restaurant', description: 'Find best places to eat', utility: 'cafe', icon: '☕' },
@@ -305,7 +304,6 @@ export const translations = {
     },
     suggestedTopics: [
       { text: '乗換案内', description: 'ルートと料金を確認', utility: 'train', icon: '🚄' },
-      { text: 'バス検索', description: '高速バスを探す', utility: 'bus', icon: '🚌' },
       { text: '観光チケット', description: 'ディズニー、USJなどを予約', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIMデータ', description: '日本のeSIMを購入', utility: 'esim', icon: '📶' },
       { text: 'カフェ＆レストラン', description: '最高の食事場所を探す', utility: 'cafe', icon: '☕' },
@@ -459,7 +457,6 @@ export const translations = {
     },
     suggestedTopics: [
       { text: 'Tra tàu', description: 'Kiểm tra lộ trình & giá vé', utility: 'train', icon: '🚄' },
-      { text: 'Tra bus', description: 'Tìm xe bus đường dài Nhật', utility: 'bus', icon: '🚌' },
       { text: 'Vé tham quan', description: 'Đặt vé Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIM du lịch', description: 'Mua eSIM Nhật Bản nhanh', utility: 'esim', icon: '📶' },
       { text: 'Quán Cafe & Nhà hàng', description: 'Tìm địa điểm ăn uống tốt nhất', utility: 'cafe', icon: '☕' },
