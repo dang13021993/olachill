@@ -9,6 +9,50 @@ const GEMINI_KEY =
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 
+const parseApiErrorMessage = async (resp: Response) => {
+  try {
+    const data = await resp.json();
+    if (typeof data?.error === "string" && data.error.trim()) {
+      return data.error;
+    }
+  } catch {
+    // Ignore JSON parse errors and fallback below.
+  }
+  return `Request failed with status ${resp.status}`;
+};
+
+const generateTravelPlanViaServer = async (
+  prompt: string,
+  history: { role: 'user' | 'model', text: string }[],
+  language: 'en' | 'ja' | 'vi'
+): Promise<TravelPlan> => {
+  const resp = await fetch('/api/travel/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, history, language })
+  });
+
+  if (!resp.ok) {
+    throw new Error(await parseApiErrorMessage(resp));
+  }
+
+  return await resp.json() as TravelPlan;
+};
+
+const getPlaceInfoViaServer = async (placeName: string, language: 'en' | 'ja' | 'vi') => {
+  const resp = await fetch('/api/travel/place-info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ placeName, language })
+  });
+
+  if (!resp.ok) {
+    return { text: "Could not get information.", grounding: [] };
+  }
+
+  return await resp.json();
+};
+
 // Simple hash function for prompt
 const hashPrompt = (str: string) => {
   let hash = 0;
@@ -99,10 +143,6 @@ export const generateTravelPlan = async (
   onChunk?: (text: string) => void,
   language: 'en' | 'ja' | 'vi' = 'vi'
 ): Promise<TravelPlan> => {
-  if (!GEMINI_KEY) {
-    throw new Error("Missing GEMINI_API_KEY. Please check Secrets configuration.");
-  }
-
   const promptHash = hashPrompt(prompt + (history.length > 0 ? history[history.length - 1].text : '') + language);
   const cacheRef = doc(db, "plans", promptHash);
 
@@ -152,6 +192,31 @@ export const generateTravelPlan = async (
   }
 
   console.log("Generating NEW travel plan for:", prompt, "in", language);
+
+  // If frontend build does not contain GEMINI_API_KEY, fallback to server-side generation.
+  if (!GEMINI_KEY) {
+    try {
+      const parsed = await generateTravelPlanViaServer(prompt, history, language);
+      try {
+        await setDoc(cacheRef, {
+          promptHash,
+          plan: parsed,
+          createdAt: serverTimestamp()
+        });
+      } catch (cacheError) {
+        console.warn("Failed to save cache:", cacheError);
+      }
+      return parsed;
+    } catch (error: any) {
+      console.error("Server-side generation failed:", error);
+      const message = error?.message || (language === 'ja'
+        ? "サーバーAI接続エラー。しばらくして再試行してください。"
+        : language === 'en'
+          ? "Server AI connection error. Please try again shortly."
+          : "Lỗi kết nối AI phía máy chủ. Vui lòng thử lại sau.");
+      throw new Error(message);
+    }
+  }
 
   try {
     const contextPrompt = history.length > 0 
@@ -419,7 +484,9 @@ export const generateTravelPlan = async (
 
 
 export const getPlaceInfo = async (placeName: string, language: 'en' | 'ja' | 'vi' = 'vi') => {
-  if (!GEMINI_KEY) return { text: "Missing API Key." };
+  if (!GEMINI_KEY) {
+    return await getPlaceInfoViaServer(placeName, language);
+  }
 
   const langPrompt = language === 'ja' ? "日本語で説明してください。" :
                      language === 'en' ? "Please explain in English." :

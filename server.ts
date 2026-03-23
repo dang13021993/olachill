@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import cors from "cors";
+import { GoogleGenAI, Type } from "@google/genai";
 
 type PartnerLinkMap = Record<string, string>;
 
@@ -226,6 +227,21 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
     .filter(Boolean) as EsimPlan[];
 }
 
+function resolveTargetLanguage(language: string): string {
+  if (language === "ja") return "JAPANESE (日本語)";
+  if (language === "en") return "ENGLISH";
+  return "VIETNAMESE (Tiếng Việt)";
+}
+
+function buildHistoryContext(history: Array<{ role: "user" | "model"; text: string }>): string {
+  if (!Array.isArray(history) || history.length === 0) return "";
+  return history
+    .slice(-12)
+    .map((h) => `${h.role === "user" ? "User" : "AI"}: ${String(h.text || "").trim()}`)
+    .filter(Boolean)
+    .join("\n");
+}
+
 async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] | null> {
   const baseUrl = process.env.ESIM_PROVIDER_BASE_URL;
   const apiKey = process.env.ESIM_PROVIDER_API_KEY;
@@ -306,6 +322,222 @@ async function startServer() {
       checkoutProUrl: process.env.CHECKOUT_PRO_URL || process.env.VITE_CHECKOUT_PRO_URL || "",
       checkoutUltraUrl: process.env.CHECKOUT_ULTRA_URL || process.env.VITE_CHECKOUT_ULTRA_URL || ""
     });
+  });
+
+  app.post("/api/travel/generate", async (req, res) => {
+    const prompt = String(req.body?.prompt || "").trim();
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
+    const language = String(req.body?.language || "vi").trim() as "vi" | "en" | "ja";
+
+    if (!prompt) {
+      res.status(400).json({ error: "prompt is required" });
+      return;
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({ error: "GEMINI_API_KEY is not configured on server" });
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const targetLang = resolveTargetLanguage(language);
+      const historyContext = buildHistoryContext(history);
+      const nowText = new Date().toLocaleDateString();
+
+      const requestText = [
+        `USER REQUEST: "${prompt}"`,
+        historyContext ? `\nCONVERSATION HISTORY:\n${historyContext}` : "",
+        "\nCRITICAL INSTRUCTIONS:",
+        `1) Respond strictly in ${targetLang}.`,
+        "2) Return ONLY ONE valid JSON object.",
+        '3) Use "type":"chat" for general Q&A and "type":"plan" only for true multi-day itinerary requests.',
+        "4) Include concise, practical travel guidance.",
+        "5) Add Google Maps links in summary where relevant.",
+        `6) Use search-grounding for current events around date ${nowText}.`
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const response = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+        contents: requestText,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              type: { type: Type.STRING, enum: ["plan", "chat"] },
+              destination: { type: Type.STRING },
+              summary: { type: Type.STRING },
+              itinerarySummary: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    day: { type: Type.STRING },
+                    area: { type: Type.STRING },
+                    focus: { type: Type.STRING }
+                  }
+                }
+              },
+              days: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    day: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    activities: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          time: { type: Type.STRING },
+                          activity: { type: Type.STRING },
+                          location: { type: Type.STRING },
+                          description: { type: Type.STRING },
+                          googleMapsUrl: { type: Type.STRING }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              tips: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              },
+              hotels: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    area: { type: Type.STRING },
+                    priceRange: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    bookingUrl: { type: Type.STRING }
+                  }
+                }
+              },
+              tickets: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    price: { type: Type.STRING },
+                    bookingPoint: { type: Type.STRING },
+                    note: { type: Type.STRING }
+                  }
+                }
+              },
+              transportation: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    type: { type: Type.STRING },
+                    provider: { type: Type.STRING },
+                    price: { type: Type.STRING },
+                    details: { type: Type.STRING }
+                  }
+                }
+              },
+              events: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    date: { type: Type.STRING },
+                    location: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    type: { type: Type.STRING }
+                  }
+                }
+              },
+              suggestions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    query: { type: Type.STRING },
+                    icon: { type: Type.STRING }
+                  }
+                }
+              }
+            },
+            required: ["destination", "summary", "tips", "suggestions"]
+          }
+        }
+      });
+
+      const text = String(response.text || "").trim();
+      if (!text) {
+        res.status(502).json({ error: "Empty AI response" });
+        return;
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        res.status(502).json({ error: "AI returned invalid JSON format" });
+        return;
+      }
+
+      res.json(parsed);
+    } catch (error) {
+      console.error("travel/generate failed:", error);
+      res.status(502).json({ error: "Failed to generate travel plan from AI" });
+    }
+  });
+
+  app.post("/api/travel/place-info", async (req, res) => {
+    const placeName = String(req.body?.placeName || "").trim();
+    const language = String(req.body?.language || "vi").trim() as "vi" | "en" | "ja";
+
+    if (!placeName) {
+      res.status(400).json({ error: "placeName is required" });
+      return;
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({ error: "GEMINI_API_KEY is not configured on server" });
+      return;
+    }
+
+    const langPrompt = language === "ja"
+      ? "日本語で簡潔に説明してください。"
+      : language === "en"
+        ? "Please explain briefly in English."
+        : "Trình bày ngắn gọn bằng tiếng Việt.";
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+        contents: `Detailed information about: ${placeName}. Include highlights and practical tips for travelers. ${langPrompt}`,
+        config: {
+          tools: [{ googleSearch: {} }]
+        }
+      });
+
+      res.json({
+        text: response.text || "No information.",
+        grounding: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+      });
+    } catch (error) {
+      console.error("travel/place-info failed:", error);
+      res.status(502).json({ error: "Failed to load place info" });
+    }
   });
 
   // Branded redirect route to keep affiliate URLs hidden from frontend/UI.
