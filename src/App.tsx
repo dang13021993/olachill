@@ -2926,6 +2926,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       if (code === 'auth/operation-not-allowed') return 'Google Sign-In chưa bật trong Firebase Authentication.';
       if (code === 'auth/invalid-api-key') return 'Firebase API key không hợp lệ.';
       if (code === 'auth/network-request-failed') return 'Lỗi mạng khi đăng nhập. Vui lòng thử lại.';
+      if (code === 'auth/invalid-continue-uri' || code === 'auth/invalid-action-code') return 'Liên kết đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng thử đăng nhập lại.';
+      if (code === 'auth/invalid-oauth-client-id') return 'OAuth Client ID của Firebase/Google Sign-In đang sai cấu hình.';
       return 'Đăng nhập thất bại. Vui lòng thử lại.';
     }
     if (language === 'ja') {
@@ -2933,12 +2935,16 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       if (code === 'auth/operation-not-allowed') return 'Firebase Authentication で Google ログインが有効化されていません。';
       if (code === 'auth/invalid-api-key') return 'Firebase API キーが無効です。';
       if (code === 'auth/network-request-failed') return 'ネットワークエラーのためログインできません。';
+      if (code === 'auth/invalid-continue-uri' || code === 'auth/invalid-action-code') return 'ログインリンクが無効または期限切れです。もう一度ログインしてください。';
+      if (code === 'auth/invalid-oauth-client-id') return 'Firebase/Google Sign-In の OAuth Client ID 設定が正しくありません。';
       return 'ログインに失敗しました。再試行してください。';
     }
     if (code === 'auth/unauthorized-domain') return `This domain "${currentHost}" is not authorized in Firebase Auth. Add these domains: ${requiredDomains}`;
     if (code === 'auth/operation-not-allowed') return 'Google Sign-In is not enabled in Firebase Authentication.';
     if (code === 'auth/invalid-api-key') return 'Invalid Firebase API key.';
     if (code === 'auth/network-request-failed') return 'Network error while signing in. Please try again.';
+    if (code === 'auth/invalid-continue-uri' || code === 'auth/invalid-action-code') return 'Login link is invalid or expired. Please try signing in again.';
+    if (code === 'auth/invalid-oauth-client-id') return 'Firebase/Google Sign-In OAuth client ID is misconfigured.';
     return 'Login failed. Please try again.';
   };
 

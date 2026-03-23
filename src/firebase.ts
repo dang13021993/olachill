@@ -31,18 +31,10 @@ const shouldUseRedirectLogin = () => {
   }
   const ua = window.navigator.userAgent.toLowerCase();
   const isMobile = MOBILE_UA_REGEX.test(ua);
-  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || (window.navigator as any).standalone === true;
-  return isMobile || isStandalone;
-};
-
-const isIOSSafariBrowser = () => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  const ua = window.navigator.userAgent.toLowerCase();
   const isIOS = /iphone|ipad|ipod/.test(ua);
   const isWebKitSafari = /safari/.test(ua) && !/crios|fxios|edgios|opios/.test(ua);
-  return isIOS && isWebKitSafari;
+  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || (window.navigator as any).standalone === true;
+  return isMobile || isStandalone || (isIOS && isWebKitSafari);
 };
 
 const POPUP_FALLBACK_CODES = new Set([
@@ -94,17 +86,19 @@ void ensureAuthPersistence();
 // Auth Helpers
 export const loginWithGoogle = async () => {
   await ensureAuthPersistence();
+  const preferRedirect = shouldUseRedirectLogin();
+
+  if (preferRedirect) {
+    await signInWithRedirect(auth, googleProvider);
+    return null;
+  }
 
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     const code = String(error?.code || '');
-    const allowRedirectFallback = shouldUseRedirectLogin() && !isIOSSafariBrowser();
     if (!AUTH_CONFIGURATION_CODES.has(code) && (POPUP_FALLBACK_CODES.has(code) || code.startsWith('auth/'))) {
-      if (!allowRedirectFallback) {
-        throw error;
-      }
       try {
         await signInWithRedirect(auth, googleProvider);
         return null;
