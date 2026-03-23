@@ -1405,52 +1405,89 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   );
 };
 
+type UpgradePlanId = 'free' | 'basic' | 'pro' | 'ultra';
+
 const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: Language }) => {
+  const supportEmail = 'lovejapan12345@gmail.com';
   const copyByLang = {
     vi: {
       title: 'Nâng cấp gói',
-      subtitle: 'Mở khoá tính năng Pro và cổng thanh toán thương mại',
-      starter: 'Starter',
-      pro: 'Pro',
-      buy: 'Mở thanh toán',
-      unavailable: 'Chưa cấu hình',
-      featuresStarter: ['Tạo lịch trình tiêu chuẩn', 'Lưu lịch sử', 'Giới hạn vừa phải'],
-      featuresPro: ['Ưu tiên tốc độ', 'Mở rộng tiện ích Pro', 'Hỗ trợ tích hợp API đối tác'],
-      checkoutMissing: 'Chưa cấu hình link checkout. Hãy set VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL.',
-      payoutHint: 'Để nhận tiền: dùng Stripe/LemonSqueezy/Paddle, rồi gắn link checkout vào biến môi trường.'
+      subtitle: 'Nhận thêm câu hỏi và tính năng',
+      questionsLeft: 'Câu hỏi còn lại',
+      currentPlan: 'Gói hiện tại',
+      upgradeNow: 'Nâng cấp ngay',
+      processing: 'Đang xử lý...',
+      free: 'Miễn phí',
+      basic: 'Cơ bản',
+      pro: 'Chuyên nghiệp',
+      ultra: 'Cao cấp',
+      autoPayNotice: 'Đang mở cổng thanh toán...',
+      autoPayHint: 'Nếu cổng thanh toán không mở, vui lòng dùng nút Email hỗ trợ bên dưới.',
+      checkoutMissing: 'Gói này chưa có link thanh toán trực tiếp.',
+      contactSupport: 'Liên hệ qua Email',
+      payoutHint: 'Cấu hình link checkout qua VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL / VITE_CHECKOUT_ULTRA_URL.'
     },
     en: {
       title: 'Upgrade Plan',
-      subtitle: 'Unlock Pro features and commercial checkout flow',
-      starter: 'Starter',
+      subtitle: 'Get more questions and premium utilities',
+      questionsLeft: 'questions left',
+      currentPlan: 'Current Plan',
+      upgradeNow: 'Upgrade Now',
+      processing: 'Processing...',
+      free: 'Free',
+      basic: 'Basic',
       pro: 'Pro',
-      buy: 'Open Checkout',
-      unavailable: 'Not Configured',
-      featuresStarter: ['Standard itinerary generation', 'Saved history', 'Moderate limits'],
-      featuresPro: ['Priority speed', 'Extended Pro utilities', 'Partner API integration support'],
-      checkoutMissing: 'Checkout URL is not configured. Set VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL.',
-      payoutHint: 'To receive money: connect Stripe/LemonSqueezy/Paddle, then map checkout URLs in env vars.'
+      ultra: 'Ultra',
+      autoPayNotice: 'Opening checkout...',
+      autoPayHint: 'If checkout did not open, use support email below.',
+      checkoutMissing: 'No direct checkout URL configured for this tier.',
+      contactSupport: 'Contact via Email',
+      payoutHint: 'Configure checkout links via VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL / VITE_CHECKOUT_ULTRA_URL.'
     },
     ja: {
       title: 'プランをアップグレード',
-      subtitle: 'Pro機能と商用決済フローを有効化',
-      starter: 'Starter',
-      pro: 'Pro',
-      buy: '決済を開く',
-      unavailable: '未設定',
-      featuresStarter: ['標準の旅程生成', '履歴保存', '中程度の上限'],
-      featuresPro: ['優先レスポンス', 'Proユーティリティ拡張', '提携API連携サポート'],
-      checkoutMissing: 'チェックアウトURLが未設定です。VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL を設定してください。',
-      payoutHint: '売上受取には Stripe/LemonSqueezy/Paddle を接続し、env に checkout URL を設定してください。'
+      subtitle: '質問枠と機能を増やす',
+      questionsLeft: '残り質問数',
+      currentPlan: '現在のプラン',
+      upgradeNow: '今すぐアップグレード',
+      processing: '処理中...',
+      free: '無料',
+      basic: 'ベーシック',
+      pro: 'プロ',
+      ultra: 'プレミアム',
+      autoPayNotice: '決済ページを開いています...',
+      autoPayHint: '決済ページが開かない場合は、下のサポートメールをご利用ください。',
+      checkoutMissing: 'このプランの決済URLが未設定です。',
+      contactSupport: 'メールで問い合わせ',
+      payoutHint: 'VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL / VITE_CHECKOUT_ULTRA_URL を設定してください。'
     }
   } as const;
 
   const copy = copyByLang[language];
   const buildBasicCheckout = (import.meta as any).env?.VITE_CHECKOUT_BASIC_URL || '';
   const buildProCheckout = (import.meta as any).env?.VITE_CHECKOUT_PRO_URL || '';
-  const [runtimeCheckout, setRuntimeCheckout] = useState<{ basic: string; pro: string }>({ basic: '', pro: '' });
-  const basicCheckout = runtimeCheckout.basic || buildBasicCheckout;
-  const proCheckout = runtimeCheckout.pro || buildProCheckout;
+  const buildUltraCheckout = (import.meta as any).env?.VITE_CHECKOUT_ULTRA_URL || '';
+  const [runtimeCheckout, setRuntimeCheckout] = useState<{ basic: string; pro: string; ultra: string }>({
+    basic: '',
+    pro: '',
+    ultra: ''
+  });
+  const [processingPlanId, setProcessingPlanId] = useState<UpgradePlanId | null>(null);
+  const [showPayNotice, setShowPayNotice] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<UpgradePlanId>('free');
+
+  const checkoutByPlan = {
+    basic: runtimeCheckout.basic || buildBasicCheckout,
+    pro: runtimeCheckout.pro || buildProCheckout,
+    ultra: runtimeCheckout.ultra || buildUltraCheckout || runtimeCheckout.pro || buildProCheckout
+  };
+
+  useEffect(() => {
+    const savedPlan = typeof window !== 'undefined' ? window.localStorage.getItem('olachill_plan') : null;
+    if (savedPlan === 'free' || savedPlan === 'basic' || savedPlan === 'pro' || savedPlan === 'ultra') {
+      setCurrentPlan(savedPlan);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -1460,7 +1497,8 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         if (!active || !json) return;
         setRuntimeCheckout({
           basic: typeof json?.checkoutBasicUrl === 'string' ? json.checkoutBasicUrl : '',
-          pro: typeof json?.checkoutProUrl === 'string' ? json.checkoutProUrl : ''
+          pro: typeof json?.checkoutProUrl === 'string' ? json.checkoutProUrl : '',
+          ultra: typeof json?.checkoutUltraUrl === 'string' ? json.checkoutUltraUrl : ''
         });
       })
       .catch(() => {
@@ -1473,17 +1511,60 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
   }, []);
 
   const openCheckout = (url: string) => {
-    if (!url) {
+    if (!url) return false;
+    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+    const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
+
+    try {
+      if (isMobile) {
+        window.location.assign(url);
+        return true;
+      }
+      const popup = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!popup) {
+        window.location.assign(url);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to open checkout URL', error);
+      return false;
+    }
+  };
+
+  const openSupportEmail = () => {
+    const body = language === 'vi'
+      ? 'Xin chào Olachill, tôi cần hỗ trợ nâng cấp gói.'
+      : language === 'ja'
+        ? 'Olachill様、プランアップグレードのサポートをお願いします。'
+        : 'Hi Olachill, I need support to upgrade my plan.';
+    const mailto = `mailto:${supportEmail}?subject=Plan Upgrade Request&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  };
+
+  const plans: Array<{ id: UpgradePlanId; name: string; price: string; limit: number; features?: string[] }> = [
+    { id: 'free', name: copy.free, price: '0 ¥', limit: 10 },
+    { id: 'basic', name: copy.basic, price: '500 ¥', limit: 50 },
+    { id: 'pro', name: copy.pro, price: '1000 ¥', limit: 100 },
+    { id: 'ultra', name: copy.ultra, price: '2000 ¥', limit: 200, features: ['GPS nearby search'] }
+  ];
+
+  const handleUpgrade = (planId: UpgradePlanId) => {
+    if (planId === 'free' || processingPlanId) return;
+    setShowPayNotice(false);
+    setProcessingPlanId(planId);
+
+    const checkoutUrl = checkoutByPlan[planId as keyof typeof checkoutByPlan];
+    const opened = openCheckout(checkoutUrl);
+    if (!opened) {
+      setProcessingPlanId(null);
       alert(copy.checkoutMissing);
       return;
     }
-    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
-    const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
-    if (isMobile) {
-      window.location.href = url;
-      return;
-    }
-    window.open(url, '_blank', 'noopener,noreferrer');
+
+    setShowPayNotice(true);
+    setTimeout(() => {
+      setProcessingPlanId(null);
+    }, 1200);
   };
 
   return (
@@ -1499,7 +1580,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-5 sm:p-8 shadow-2xl"
+        className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-5 sm:p-8 shadow-2xl"
       >
         <button
           onClick={onClose}
@@ -1507,57 +1588,77 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         >
           <X size={18} className="text-stone-400" />
         </button>
+
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
             <Crown size={20} />
           </div>
           <h3 className="text-2xl font-serif dark:text-white">{copy.title}</h3>
         </div>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">{copy.subtitle}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400 mb-5">{copy.subtitle}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-stone-100 dark:border-stone-700 p-5">
-            <h4 className="text-lg font-bold mb-2 dark:text-white">{copy.starter}</h4>
-            <p className="text-2xl font-mono font-bold mb-3">$9 / month</p>
-            <ul className="space-y-2 text-sm text-stone-500 dark:text-stone-400 mb-4">
-              {copy.featuresStarter.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              onClick={() => openCheckout(basicCheckout)}
-              disabled={!basicCheckout}
-              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {basicCheckout ? copy.buy : copy.unavailable}
-            </button>
+        {showPayNotice && (
+          <div className="mb-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
+            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{copy.autoPayNotice}</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">{copy.autoPayHint}</p>
           </div>
+        )}
 
-          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 p-5 bg-emerald-50/40 dark:bg-emerald-900/10">
-            <h4 className="text-lg font-bold mb-2 dark:text-white">{copy.pro}</h4>
-            <p className="text-2xl font-mono font-bold mb-3">$29 / month</p>
-            <ul className="space-y-2 text-sm text-stone-500 dark:text-stone-400 mb-4">
-              {copy.featuresPro.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              onClick={() => openCheckout(proCheckout)}
-              disabled={!proCheckout}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {proCheckout ? copy.buy : copy.unavailable}
-            </button>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {plans.map((plan) => {
+            const isCurrent = currentPlan === plan.id;
+            const isProcessing = processingPlanId === plan.id;
+            const disabled = isCurrent || processingPlanId !== null;
+            return (
+              <div
+                key={plan.id}
+                className={`rounded-2xl border p-5 transition-colors ${
+                  isCurrent
+                    ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10'
+                    : 'border-stone-200 dark:border-stone-700 bg-stone-50/40 dark:bg-stone-800/40'
+                }`}
+              >
+                <h4 className="text-lg font-bold dark:text-white">{plan.name}</h4>
+                <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2 mb-4">{plan.price}</p>
+                <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-300 mb-5 min-h-20">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
+                    <span>{plan.limit} {copy.questionsLeft}</span>
+                  </li>
+                  {(plan.features || []).map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => handleUpgrade(plan.id)}
+                  disabled={disabled}
+                  className={`w-full py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
+                    isCurrent
+                      ? 'bg-stone-200 dark:bg-stone-800 text-stone-500 cursor-default'
+                      : 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 disabled:opacity-80 disabled:cursor-not-allowed'
+                  }`}
+                >
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : isCurrent ? <CheckCircle2 size={14} /> : <ArrowRight size={14} />}
+                  <span>{isCurrent ? copy.currentPlan : isProcessing ? copy.processing : copy.upgradeNow}</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        <p className="text-xs text-stone-400 mt-6">{copy.payoutHint}</p>
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <button
+            onClick={openSupportEmail}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
+          >
+            <ExternalLink size={14} />
+            <span>{copy.contactSupport}</span>
+          </button>
+          <p className="text-xs text-stone-400 dark:text-stone-500">{copy.payoutHint}</p>
+        </div>
       </motion.div>
     </div>
   );
