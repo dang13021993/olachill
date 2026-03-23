@@ -3,13 +3,13 @@ steps:
     args:
       - build
       - -t
-      - '$_IMAGE'
+      - 'gcr.io/${PROJECT_ID}/olachill:${BUILD_ID}'
       - .
 
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - '$_IMAGE'
+      - 'gcr.io/${PROJECT_ID}/olachill:${BUILD_ID}'
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -18,7 +18,7 @@ steps:
       - deploy
       - '$_SERVICE'
       - --image
-      - '$_IMAGE'
+      - 'gcr.io/${PROJECT_ID}/olachill:${BUILD_ID}'
       - --region
       - '$_REGION'
       - --platform
@@ -27,11 +27,10 @@ steps:
       - --quiet
 
 images:
-  - '$_IMAGE'
+  - 'gcr.io/${PROJECT_ID}/olachill:${BUILD_ID}'
 
 timeout: '1200s'
 
 substitutions:
   _REGION: us-west1
   _SERVICE: olachill-chuy-n-gia-du-l-ch-nh-t-b-n
-  _IMAGE: gcr.io/$PROJECT_ID/olachill:$COMMIT_SHA
