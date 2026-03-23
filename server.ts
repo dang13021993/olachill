@@ -53,7 +53,8 @@ const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
   "kyoto-kimono": "https://www.yumeyakata.com/english/",
   "nara-deer-park": "https://www.visitnara.jp/",
   "klook": "https://www.klook.com/",
-  "kkday": "https://www.kkday.com/"
+  "kkday": "https://www.kkday.com/",
+  "kkday-jp-attraction-tickets": "https://www.kkday.com/vi/category/jp-japan/attraction-tickets?cid=24160&ud1=tickets"
 };
 
 const AFFILIATE_COUPONS_FILE = path.join(process.cwd(), "data", "affiliate_coupons.json");

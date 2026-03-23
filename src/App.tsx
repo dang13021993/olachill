@@ -795,9 +795,54 @@ const Personalization = ({ onClose, language, user, currentPrefs }: { onClose: (
 
 const TicketSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
   const t = translations[language];
+  const copyByLang = {
+    vi: {
+      sortLabel: 'Sắp xếp',
+      sortPopular: 'Nổi tiếng',
+      sortPriceAsc: 'Giá thấp -> cao',
+      sortPriceDesc: 'Giá cao -> thấp',
+      priceFilterLabel: 'Lọc giá',
+      priceAll: 'Tất cả',
+      priceBudget: '<= 3,000 JPY',
+      priceMid: '3,001 - 6,000 JPY',
+      priceHigh: '> 6,000 JPY',
+      openKkday: 'Mở vé KKday Nhật Bản',
+      sourceNote: 'Nguồn vé: KKday Japan Attraction Tickets (affiliate)'
+    },
+    en: {
+      sortLabel: 'Sort',
+      sortPopular: 'Popular',
+      sortPriceAsc: 'Price Low -> High',
+      sortPriceDesc: 'Price High -> Low',
+      priceFilterLabel: 'Price Filter',
+      priceAll: 'All',
+      priceBudget: '<= 3,000 JPY',
+      priceMid: '3,001 - 6,000 JPY',
+      priceHigh: '> 6,000 JPY',
+      openKkday: 'Open KKday Japan Tickets',
+      sourceNote: 'Ticket source: KKday Japan Attraction Tickets (affiliate)'
+    },
+    ja: {
+      sortLabel: '並び替え',
+      sortPopular: '人気順',
+      sortPriceAsc: '価格が安い順',
+      sortPriceDesc: '価格が高い順',
+      priceFilterLabel: '価格フィルター',
+      priceAll: 'すべて',
+      priceBudget: '3,000 JPY 以下',
+      priceMid: '3,001 - 6,000 JPY',
+      priceHigh: '6,000 JPY 超',
+      openKkday: 'KKday 日本チケットを開く',
+      sourceNote: 'チケット提供元: KKday Japan Attraction Tickets (affiliate)'
+    }
+  } as const;
+  const cp = copyByLang[language];
   const categories = [t.categories.all, t.categories.themePark, t.categories.museum, t.categories.observatory, t.categories.experience];
   const [activeCat, setActiveCat] = useState(t.categories.all);
+  const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc'>('popular');
+  const [priceBand, setPriceBand] = useState<'all' | 'budget' | 'mid' | 'premium'>('all');
   const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
+  const ticketAffiliateSlug = 'kkday-jp-attraction-tickets';
 
   const getBrandedLink = (slug: string) => {
     if (typeof window === 'undefined') return `/go/${slug}`;
@@ -808,82 +853,102 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
     window.open(`/go/${slug}`, '_blank', 'noopener,noreferrer');
   };
 
+  const formatPriceJpy = (priceJpy: number) => {
+    const locale = language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US';
+    return `${new Intl.NumberFormat(locale).format(priceJpy)} JPY`;
+  };
+
   const tickets = [
     { 
       name: 'Tokyo Disneyland', 
-      price: '8,400 JPY', 
+      priceJpy: 8400,
       icon: '🎡', 
       cat: t.categories.themePark, 
       rating: 4.9,
       image: 'https://picsum.photos/seed/disney/400/250',
-      slug: 'tokyo-disneyland'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'Universal Studios Japan', 
-      price: '8,600 JPY', 
+      priceJpy: 8600,
       icon: '🎢', 
       cat: t.categories.themePark, 
       rating: 4.8,
       image: 'https://picsum.photos/seed/usj/400/250',
-      slug: 'usj'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'TeamLab Borderless', 
-      price: '3,800 JPY', 
+      priceJpy: 3800,
       icon: '💡', 
       cat: t.categories.museum, 
       rating: 4.9,
       image: 'https://picsum.photos/seed/teamlab/400/250',
-      slug: 'teamlab-borderless'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'Shibuya Sky', 
-      price: '2,200 JPY', 
+      priceJpy: 2200,
       icon: '🏙️', 
       cat: t.categories.observatory, 
       rating: 4.7,
       image: 'https://picsum.photos/seed/shibuya/400/250',
-      slug: 'shibuya-sky'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'Ghibli Museum', 
-      price: '1,000 JPY', 
+      priceJpy: 1000,
       icon: '🌳', 
       cat: t.categories.museum, 
       rating: 5.0,
       image: 'https://picsum.photos/seed/ghibli/400/250',
-      slug: 'ghibli-museum'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'Tokyo Skytree', 
-      price: '3,100 JPY', 
+      priceJpy: 3100,
       icon: '🗼', 
       cat: t.categories.observatory, 
       rating: 4.6,
       image: 'https://picsum.photos/seed/skytree/400/250',
-      slug: 'tokyo-skytree'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'Kyoto Kimono Rental', 
-      price: '3,500 JPY', 
+      priceJpy: 3500,
       icon: '👘', 
       cat: t.categories.experience, 
       rating: 4.8,
       image: 'https://picsum.photos/seed/kimono/400/250',
-      slug: 'kyoto-kimono'
+      slug: ticketAffiliateSlug
     },
     { 
       name: 'Nara Deer Park Tour', 
-      price: '5,000 JPY', 
+      priceJpy: 5000,
       icon: '🦌', 
       cat: t.categories.experience, 
       rating: 4.7,
       image: 'https://picsum.photos/seed/nara/400/250',
-      slug: 'nara-deer-park'
+      slug: ticketAffiliateSlug
     }
   ];
 
-  const filtered = activeCat === t.categories.all ? tickets : tickets.filter(t => t.cat === activeCat);
+  const filteredByCategory = activeCat === t.categories.all
+    ? tickets
+    : tickets.filter((item) => item.cat === activeCat);
+
+  const filteredByPrice = filteredByCategory.filter((item) => {
+    if (priceBand === 'budget') return item.priceJpy <= 3000;
+    if (priceBand === 'mid') return item.priceJpy > 3000 && item.priceJpy <= 6000;
+    if (priceBand === 'premium') return item.priceJpy > 6000;
+    return true;
+  });
+
+  const filtered = [...filteredByPrice].sort((a, b) => {
+    if (sortBy === 'price-asc') return a.priceJpy - b.priceJpy;
+    if (sortBy === 'price-desc') return b.priceJpy - a.priceJpy;
+    return b.rating - a.rating || a.priceJpy - b.priceJpy;
+  });
 
   return (
     <>
@@ -923,6 +988,72 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
           ))}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{cp.sortLabel}</span>
+          <button
+            onClick={() => setSortBy('popular')}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+              sortBy === 'popular'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.sortPopular}
+          </button>
+          <button
+            onClick={() => setSortBy('price-asc')}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+              sortBy === 'price-asc'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.sortPriceAsc}
+          </button>
+          <button
+            onClick={() => setSortBy('price-desc')}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+              sortBy === 'price-desc'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.sortPriceDesc}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{cp.priceFilterLabel}</span>
+          {[
+            { id: 'all', label: cp.priceAll },
+            { id: 'budget', label: cp.priceBudget },
+            { id: 'mid', label: cp.priceMid },
+            { id: 'premium', label: cp.priceHigh }
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setPriceBand(item.id as 'all' | 'budget' | 'mid' | 'premium')}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                priceBand === item.id
+                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{cp.sourceNote}</p>
+          <button
+            onClick={() => openPartnerLink(ticketAffiliateSlug)}
+            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
+          >
+            {cp.openKkday}
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {filtered.map((ticket, i) => (
             <div key={i} className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col">
@@ -937,6 +1068,9 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
                   <Star size={10} fill="currentColor" />
                   {ticket.rating}
                 </div>
+                <div className="absolute bottom-3 left-3 bg-stone-900/85 text-white text-[10px] font-bold px-2 py-1 rounded-md">
+                  #{i + 1}
+                </div>
                 <div className="absolute top-3 right-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm w-8 h-8 rounded-lg flex items-center justify-center text-lg shadow-sm">
                   {ticket.icon}
                 </div>
@@ -949,7 +1083,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
                 <div className="flex items-center justify-between mt-auto gap-2">
                   <div className="flex flex-col">
                     <span className="text-[9px] text-stone-400 uppercase font-bold">{t.priceFrom}</span>
-                    <span className="text-sm font-mono font-bold text-stone-900 dark:text-white">{ticket.price}</span>
+                    <span className="text-sm font-mono font-bold text-stone-900 dark:text-white">{formatPriceJpy(ticket.priceJpy)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -971,6 +1105,11 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
             </div>
           ))}
         </div>
+        {filtered.length === 0 ? (
+          <div className="py-10 text-center text-sm text-stone-500 dark:text-stone-400">
+            {t.noItemsFound}
+          </div>
+        ) : null}
         <p className="text-[9px] text-stone-400 text-center italic mt-8">{t.referencePriceNote}</p>
       </motion.div>
 
