@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -55,20 +56,7 @@ const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
   "kkday": "https://www.kkday.com/"
 };
 
-const DEFAULT_AFFILIATE_COUPONS: AffiliateCoupon[] = [
-  {
-    id: "klook",
-    partner: "Klook",
-    code: "",
-    slug: "klook"
-  },
-  {
-    id: "kkday",
-    partner: "KKday",
-    code: "",
-    slug: "kkday"
-  }
-];
+const AFFILIATE_COUPONS_FILE = path.join(process.cwd(), "data", "affiliate_coupons.json");
 
 const DEFAULT_ESIM_PLANS: EsimPlan[] = [
   {
@@ -150,71 +138,98 @@ function getPartnerLinks(): PartnerLinkMap {
   };
 }
 
-function parseAffiliateCouponsFromEnv(): AffiliateCoupon[] {
-  const envCodeByPartner: Record<string, string> = {
-    klook: String(process.env.KLOOK_COUPON_CODE || "").trim(),
-    kkday: String(process.env.KKDAY_COUPON_CODE || "").trim()
-  };
+function normalizeAffiliateCoupon(item: any): AffiliateCoupon | null {
+  const id = String(item?.id || item?.partner || item?.name || "")
+    .trim()
+    .toLowerCase();
+  const partner = String(item?.partner || item?.name || item?.id || "").trim();
+  const slug = String(item?.slug || id).trim().toLowerCase();
+  const code = String(item?.code || item?.voucher || item?.discountCode || "").trim();
+  const note = typeof item?.note === "string" ? item.note.trim() : undefined;
 
+  if (!id || !partner || !slug || !code) return null;
+  return { id, partner, slug, code, note } satisfies AffiliateCoupon;
+}
+
+function parseAffiliateCouponsPayload(parsed: unknown): AffiliateCoupon[] {
+  const entries = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object"
+      ? Object.entries(parsed).map(([id, value]) => {
+          if (value && typeof value === "object") {
+            return { id, ...(value as Record<string, unknown>) };
+          }
+          return { id, code: String(value || "") };
+        })
+      : [];
+
+  return entries
+    .map((item: any) => normalizeAffiliateCoupon(item))
+    .filter(Boolean) as AffiliateCoupon[];
+}
+
+function loadAffiliateCouponsFromFile(): AffiliateCoupon[] {
+  try {
+    if (!fs.existsSync(AFFILIATE_COUPONS_FILE)) {
+      return [];
+    }
+    const raw = fs.readFileSync(AFFILIATE_COUPONS_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    const coupons = parseAffiliateCouponsPayload(parsed);
+    return coupons;
+  } catch (error) {
+    console.error("Failed to read affiliate coupons file:", error);
+    return [];
+  }
+}
+
+const DEFAULT_AFFILIATE_COUPONS: AffiliateCoupon[] = loadAffiliateCouponsFromFile();
+
+function parseAffiliateCouponsFromEnv(): AffiliateCoupon[] {
   const raw = process.env.AFFILIATE_COUPONS_JSON;
   if (!raw) {
-    return DEFAULT_AFFILIATE_COUPONS.map((item) => ({
-      ...item,
-      code: envCodeByPartner[item.id] || item.code
-    }));
+    return [];
   }
 
   try {
     const parsed = JSON.parse(raw);
-    const entries = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === "object"
-        ? Object.entries(parsed).map(([id, value]) => {
-            if (value && typeof value === "object") {
-              return { id, ...(value as Record<string, unknown>) };
-            }
-            return { id, code: String(value || "") };
-          })
-        : [];
-
-    const normalized = entries
-      .map((item: any) => {
-        const id = String(item?.id || item?.partner || item?.name || "")
-          .trim()
-          .toLowerCase();
-        const partner = String(item?.partner || item?.name || item?.id || "").trim();
-        const slug = String(item?.slug || id).trim().toLowerCase();
-        const code = String(
-          item?.code ||
-          item?.voucher ||
-          item?.discountCode ||
-          envCodeByPartner[id] ||
-          ""
-        ).trim();
-        const note = typeof item?.note === "string" ? item.note.trim() : undefined;
-        if (!id || !partner || !slug) return null;
-        return { id, partner, slug, code, note } satisfies AffiliateCoupon;
-      })
-      .filter(Boolean) as AffiliateCoupon[];
-
-    if (normalized.length === 0) {
-      return DEFAULT_AFFILIATE_COUPONS.map((item) => ({
-        ...item,
-        code: envCodeByPartner[item.id] || item.code
-      }));
-    }
-
-    return normalized;
+    return parseAffiliateCouponsPayload(parsed);
   } catch {
-    return DEFAULT_AFFILIATE_COUPONS.map((item) => ({
-      ...item,
-      code: envCodeByPartner[item.id] || item.code
-    }));
+    return [];
   }
+}
+
+function getSimplePartnerCouponsFromEnv(): AffiliateCoupon[] {
+  const klookCode = String(process.env.KLOOK_COUPON_CODE || "").trim();
+  const kkdayCode = String(process.env.KKDAY_COUPON_CODE || "").trim();
+  const out: AffiliateCoupon[] = [];
+
+  if (klookCode) {
+    out.push({
+      id: "klook-main",
+      partner: "Klook",
+      code: klookCode,
+      slug: "klook",
+      note: "Main partner coupon code"
+    });
+  }
+
+  if (kkdayCode) {
+    out.push({
+      id: "kkday-main",
+      partner: "KKday",
+      code: kkdayCode,
+      slug: "kkday",
+      note: "Main partner coupon code"
+    });
+  }
+
+  return out;
 }
 
 function getAffiliateCoupons(): AffiliateCoupon[] {
   const envCoupons = parseAffiliateCouponsFromEnv();
+  const partnerCoupons = getSimplePartnerCouponsFromEnv();
   const merged = new Map<string, AffiliateCoupon>();
 
   for (const item of DEFAULT_AFFILIATE_COUPONS) {
@@ -225,7 +240,12 @@ function getAffiliateCoupons(): AffiliateCoupon[] {
     merged.set(item.id, item);
   }
 
-  return Array.from(merged.values());
+  for (const item of partnerCoupons) {
+    merged.set(item.id, item);
+  }
+
+  return Array.from(merged.values())
+    .filter((item) => String(item.code || "").trim().length > 0);
 }
 
 function toNum(value: unknown): number | null {

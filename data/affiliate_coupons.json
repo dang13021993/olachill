@@ -1,0 +1,65 @@
+[
+  {
+    "id": "klook-springshdl",
+    "partner": "Klook",
+    "code": "SPRINGSHDL",
+    "slug": "klook",
+    "note": "5% off | Shanghai Disneyland Ticket 5% | Platform: All platforms | Redeem before: 2026-03-23 23:59:59 (GMT+8) | Valid until: 2026-03-23 23:59:59 (GMT+8) | Residents: JP;KR;TH;ID;MY;SG;HK"
+  },
+  {
+    "id": "klook-15eumob",
+    "partner": "Klook",
+    "code": "15EUMOB",
+    "slug": "klook",
+    "note": "5% off | Europe Mobility Products 5% OFF | Platform: All platforms | Redeem before: 2026-03-31 23:59:59 (GMT+8) | Valid until: 2026-03-31 23:59:59 (GMT+8) | Residents: JP;TW;CN;KR;HK"
+  },
+  {
+    "id": "klook-crhertz0315",
+    "partner": "Klook",
+    "code": "CRHERTZ0315",
+    "slug": "klook",
+    "note": "15% off | 15% OFF Hertz Car Rental Select Europe | Platform: All platforms | Redeem before: 2026-03-31 23:59:59 (GMT+8) | Valid until: 2026-03-31 23:59:59 (GMT+8) | Not for: KR"
+  },
+  {
+    "id": "klook-springusatt",
+    "partner": "Klook",
+    "code": "SPRINGUSATT",
+    "slug": "klook",
+    "note": "USD4 | Selected US attractions 4 USD off | Platform: All platforms | Redeem before: 2026-04-12 23:59:59 (GMT+8) | Valid until: 2026-04-12 23:59:59 (GMT+8) | Residents: PH;HK;AU;NZ;SG;MY;TH;ID;IN;TW;JP;SA;AE;QA;OM;IL;JO;KW;EG;FR;DE;IT;GB;CZ;FI;IS;IE;HR;CH;PT;ES"
+  },
+  {
+    "id": "klook-cnhsrb1g1",
+    "partner": "Klook",
+    "code": "CNHSRB1G1",
+    "slug": "klook",
+    "note": "50% off | China Rail Hong Kong <> Futian Second Seat B1G1 | Platform: All platforms | Redeem before: 2026-04-30 23:59:59 (GMT+8) | Valid until: 2026-04-30 23:59:59 (GMT+8) | Not for: HK;CN"
+  },
+  {
+    "id": "klook-cnhsr20",
+    "partner": "Klook",
+    "code": "CNHSR20",
+    "slug": "klook",
+    "note": "HKD20 | China Rail Hong Kong Routes 20HKD off | Platform: All platforms | Redeem before: 2026-04-30 23:59:59 (GMT+8) | Valid until: 2026-04-30 23:59:59 (GMT+8) | Not for: CN"
+  },
+  {
+    "id": "klook-springeumob",
+    "partner": "Klook",
+    "code": "SPRINGEUMOB",
+    "slug": "klook",
+    "note": "5% off | Europe Mobility Products 5% OFF | Platform: All platforms | Redeem before: 2026-05-31 23:59:59 (GMT+8) | Valid until: 2026-05-31 23:59:59 (GMT+8) | Not for: HK;SG;TH;VN;MY;PH;ID;MM;LA;BN;KH;TL;KR"
+  },
+  {
+    "id": "klook-pt24higo",
+    "partner": "Klook",
+    "code": "PT24HIGO",
+    "slug": "klook",
+    "note": "15% off | 15% off on airport transfers in KIX (Osaka Kansai airport) | Platform: All platforms | Redeem before: 2026-06-30 02:24:19 (GMT+8) | Valid until: 2026-06-30 02:24:30 (GMT+8) | Residents: AE;AR;AT;AU;BD;BE;BG;BN;BR;BT;CA;CH;CN;CY;CZ;DE;DK;EE;EG;ES;FI;FR;GB;GR;HK;HR;HU;ID;IE;IL;IN;IR;IS;IT;JP;KH;KR;KW;LA;LT;LU;LV;MM;MO;MU;MX;MY;NG;NL;NO;NP;NZ;PH;PK;PL;PT;QA;RO;RS;RU;SA;SE;SG;SI;SK;TH;TL;TR;TW;UA;US;VN"
+  },
+  {
+    "id": "klook-hotelonapp",
+    "partner": "Klook",
+    "code": "HOTELONAPP",
+    "slug": "klook",
+    "note": "5% off hotels | Save on your 1st hotel booking on the app | Platform: App only | Redeem before: 2200-12-31 23:59:59 (GMT+8) | Valid until: 2200-12-31 23:59:59 (GMT+8) | Residents: All countries"
+  }
+]

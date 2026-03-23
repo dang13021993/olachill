@@ -1032,7 +1032,7 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
   const copyByLang = {
     vi: {
       title: 'Mã giảm giá đối tác',
-      subtitle: 'Klook & KKday (tiếp thị liên kết)',
+      subtitle: 'Mã ưu đãi tiếp thị liên kết',
       codeLabel: 'Mã ưu đãi',
       codeMissing: 'Đang dùng link ưu đãi trực tiếp (không cần mã).',
       copyCode: 'Sao chép mã',
@@ -1044,7 +1044,7 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
     },
     en: {
       title: 'Affiliate Coupons',
-      subtitle: 'Klook & KKday partner deals',
+      subtitle: 'Affiliate promo codes',
       codeLabel: 'Promo code',
       codeMissing: 'Direct partner offer link (no code required).',
       copyCode: 'Copy code',
@@ -1056,7 +1056,7 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
     },
     ja: {
       title: '提携クーポン',
-      subtitle: 'Klook・KKday の提携オファー',
+      subtitle: '提携プロモコード',
       codeLabel: 'クーポンコード',
       codeMissing: 'コード不要の提携リンクです。',
       copyCode: 'コードをコピー',
