@@ -799,6 +799,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
     vi: {
       panelTickets: 'Vé tham quan',
       panelTransfer: 'Dịch vụ đưa đón',
+      panelFood: 'Ẩm thực',
       sortLabel: 'Sắp xếp',
       sortPopular: 'Nổi tiếng',
       sortPriceAsc: 'Giá thấp -> cao',
@@ -810,8 +811,10 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       priceHigh: '> 6,000 JPY',
       openKkdayTickets: 'Mở vé KKday Nhật Bản',
       openKkdayTransfer: 'Mở dịch vụ đưa đón KKday',
+      openKkdayFood: 'Mở ẩm thực KKday',
       ticketSourceNote: 'Nguồn vé: KKday Japan Attraction Tickets (affiliate)',
       transferSourceNote: 'Nguồn dịch vụ đưa đón: KKday Transport & Car (affiliate)',
+      foodSourceNote: 'Nguồn ẩm thực: KKday Restaurants (affiliate)',
       transferCategories: {
         all: 'Tất cả',
         rental: 'Xe thuê',
@@ -823,11 +826,20 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
         bike: 'Thuê xe đạp',
         car: 'Thuê xe ô tô',
         flight: 'Chuyến bay'
+      },
+      foodCategories: {
+        all: 'Tất cả',
+        sushi: 'Sushi',
+        ramen: 'Ramen',
+        wagyu: 'Wagyu',
+        buffet: 'Buffet',
+        teaDessert: 'Trà & tráng miệng'
       }
     },
     en: {
       panelTickets: 'Attraction Tickets',
       panelTransfer: 'Transport Services',
+      panelFood: 'Food & Dining',
       sortLabel: 'Sort',
       sortPopular: 'Popular',
       sortPriceAsc: 'Price Low -> High',
@@ -839,8 +851,10 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       priceHigh: '> 6,000 JPY',
       openKkdayTickets: 'Open KKday Japan Tickets',
       openKkdayTransfer: 'Open KKday Transport Services',
+      openKkdayFood: 'Open KKday Restaurants',
       ticketSourceNote: 'Ticket source: KKday Japan Attraction Tickets (affiliate)',
       transferSourceNote: 'Transport source: KKday Transport & Car (affiliate)',
+      foodSourceNote: 'Dining source: KKday Restaurants (affiliate)',
       transferCategories: {
         all: 'All',
         rental: 'Rental',
@@ -852,11 +866,20 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
         bike: 'Bike Rental',
         car: 'Car Rental',
         flight: 'Flight'
+      },
+      foodCategories: {
+        all: 'All',
+        sushi: 'Sushi',
+        ramen: 'Ramen',
+        wagyu: 'Wagyu',
+        buffet: 'Buffet',
+        teaDessert: 'Tea & Dessert'
       }
     },
     ja: {
       panelTickets: '観光チケット',
       panelTransfer: '送迎サービス',
+      panelFood: 'グルメ',
       sortLabel: '並び替え',
       sortPopular: '人気順',
       sortPriceAsc: '価格が安い順',
@@ -868,8 +891,10 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       priceHigh: '6,000 JPY 超',
       openKkdayTickets: 'KKday 日本チケットを開く',
       openKkdayTransfer: 'KKday 送迎サービスを開く',
+      openKkdayFood: 'KKday グルメを開く',
       ticketSourceNote: 'チケット提供元: KKday Japan Attraction Tickets (affiliate)',
       transferSourceNote: '送迎提供元: KKday Transport & Car (affiliate)',
+      foodSourceNote: 'グルメ提供元: KKday Restaurants (affiliate)',
       transferCategories: {
         all: 'すべて',
         rental: 'レンタル',
@@ -881,11 +906,19 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
         bike: '自転車レンタル',
         car: 'レンタカー',
         flight: 'フライト'
+      },
+      foodCategories: {
+        all: 'すべて',
+        sushi: '寿司',
+        ramen: 'ラーメン',
+        wagyu: '和牛',
+        buffet: 'ビュッフェ',
+        teaDessert: 'お茶・デザート'
       }
     }
   } as const;
   const cp = copyByLang[language];
-  type TicketPanel = 'tickets' | 'transfer';
+  type TicketPanel = 'tickets' | 'transfer' | 'food';
   type TicketItem = {
     name: string;
     priceJpy: number;
@@ -909,19 +942,30 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
     cp.transferCategories.car,
     cp.transferCategories.flight
   ];
+  const foodCategories = [
+    cp.foodCategories.all,
+    cp.foodCategories.sushi,
+    cp.foodCategories.ramen,
+    cp.foodCategories.wagyu,
+    cp.foodCategories.buffet,
+    cp.foodCategories.teaDessert
+  ];
 
   const [panelType, setPanelType] = useState<TicketPanel>('tickets');
   const [activeTicketCat, setActiveTicketCat] = useState<string>(ticketCategories[0]);
   const [activeTransferCat, setActiveTransferCat] = useState<string>(transferCategories[0]);
+  const [activeFoodCat, setActiveFoodCat] = useState<string>(foodCategories[0]);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc'>('popular');
   const [priceBand, setPriceBand] = useState<'all' | 'budget' | 'mid' | 'premium'>('all');
   const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
   const ticketAffiliateSlug = 'kkday-jp-attraction-tickets';
   const transferAffiliateSlug = 'kkday-jp-transfer-services';
+  const foodAffiliateSlug = 'kkday-global-restaurants';
 
   useEffect(() => {
     setActiveTicketCat(ticketCategories[0]);
     setActiveTransferCat(transferCategories[0]);
+    setActiveFoodCat(foodCategories[0]);
   }, [language]);
 
   const getBrandedLink = (slug: string) => {
@@ -1106,12 +1150,75 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
     }
   ];
 
-  const currentCategories = panelType === 'tickets' ? ticketCategories : transferCategories;
-  const activeCat = panelType === 'tickets' ? activeTicketCat : activeTransferCat;
-  const currentItems = panelType === 'tickets' ? tickets : transferServices;
-  const currentAffiliateSlug = panelType === 'tickets' ? ticketAffiliateSlug : transferAffiliateSlug;
-  const sourceNote = panelType === 'tickets' ? cp.ticketSourceNote : cp.transferSourceNote;
-  const sourceButtonLabel = panelType === 'tickets' ? cp.openKkdayTickets : cp.openKkdayTransfer;
+  const foodExperiences: TicketItem[] = [
+    {
+      name: 'Tokyo Omakase Sushi Experience',
+      priceJpy: 9200,
+      icon: '🍣',
+      cat: cp.foodCategories.sushi,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/food-sushi-1/400/250',
+      slug: foodAffiliateSlug
+    },
+    {
+      name: 'Sapporo Miso Ramen Tour',
+      priceJpy: 3400,
+      icon: '🍜',
+      cat: cp.foodCategories.ramen,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/food-ramen-1/400/250',
+      slug: foodAffiliateSlug
+    },
+    {
+      name: 'Kobe Wagyu Dinner Course',
+      priceJpy: 14800,
+      icon: '🥩',
+      cat: cp.foodCategories.wagyu,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/food-wagyu-1/400/250',
+      slug: foodAffiliateSlug
+    },
+    {
+      name: 'Kyoto Kaiseki Seasonal Set',
+      priceJpy: 11800,
+      icon: '🍱',
+      cat: cp.foodCategories.buffet,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/food-kaiseki-1/400/250',
+      slug: foodAffiliateSlug
+    },
+    {
+      name: 'Matcha & Dessert Cafe Pass',
+      priceJpy: 2600,
+      icon: '🍵',
+      cat: cp.foodCategories.teaDessert,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/food-dessert-1/400/250',
+      slug: foodAffiliateSlug
+    },
+    {
+      name: 'Osaka Street Food Night',
+      priceJpy: 4700,
+      icon: '🍢',
+      cat: cp.foodCategories.buffet,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/food-osaka-1/400/250',
+      slug: foodAffiliateSlug
+    }
+  ];
+
+  const currentCategories =
+    panelType === 'tickets' ? ticketCategories : panelType === 'transfer' ? transferCategories : foodCategories;
+  const activeCat =
+    panelType === 'tickets' ? activeTicketCat : panelType === 'transfer' ? activeTransferCat : activeFoodCat;
+  const currentItems =
+    panelType === 'tickets' ? tickets : panelType === 'transfer' ? transferServices : foodExperiences;
+  const currentAffiliateSlug =
+    panelType === 'tickets' ? ticketAffiliateSlug : panelType === 'transfer' ? transferAffiliateSlug : foodAffiliateSlug;
+  const sourceNote =
+    panelType === 'tickets' ? cp.ticketSourceNote : panelType === 'transfer' ? cp.transferSourceNote : cp.foodSourceNote;
+  const sourceButtonLabel =
+    panelType === 'tickets' ? cp.openKkdayTickets : panelType === 'transfer' ? cp.openKkdayTransfer : cp.openKkdayFood;
 
   const filteredByCategory = activeCat === currentCategories[0]
     ? currentItems
@@ -1173,6 +1280,16 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
           >
             {cp.panelTransfer}
           </button>
+          <button
+            onClick={() => setPanelType('food')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              panelType === 'food'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.panelFood}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-5 mb-6">
@@ -1183,8 +1300,10 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
                 onClick={() => {
                   if (panelType === 'tickets') {
                     setActiveTicketCat(cat);
-                  } else {
+                  } else if (panelType === 'transfer') {
                     setActiveTransferCat(cat);
+                  } else {
+                    setActiveFoodCat(cat);
                   }
                 }}
                 className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-colors ${
