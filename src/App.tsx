@@ -2256,6 +2256,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
 
   // Suggested topics based on popular queries and AI strengths
   const suggestedTopics = t.suggestedTopics;
+  const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility);
 
   const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'cafe' | 'secondhand' | 'esim'>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -3142,6 +3143,23 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                           {t.heroDescription}
                         </p>
 
+                        <div className="mb-6 flex flex-col items-start gap-2.5">
+                          {utilityTopics.map((topic: any) => (
+                            <button
+                              key={topic.utility}
+                              onClick={() => setActiveUtility(topic.utility as any)}
+                              className={`inline-flex items-center gap-2.5 rounded-full px-4 py-3 border shadow-md transition-all ${
+                                activeUtility === topic.utility
+                                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                                  : 'bg-white/95 dark:bg-stone-900/95 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-100 hover:border-emerald-500/50'
+                              }`}
+                            >
+                              <span className="text-lg leading-none">{topic.icon}</span>
+                              <span className="text-[20px] leading-none font-medium">{topic.text}</span>
+                            </button>
+                          ))}
+                        </div>
+
                         <form onSubmit={handleFormSubmit} className="rounded-[30px] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 shadow-xl shadow-stone-100 dark:shadow-none p-4">
                           <textarea
                             value={prompt}
@@ -3376,10 +3394,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       </main>
 
       {/* Quick Tools - Always visible at bottom */}
-      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
+      <div className="hidden md:block fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
         <div className="max-w-4xl mx-auto px-3 pointer-events-auto overflow-hidden">
           <div className="flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
-          {t.suggestedTopics.filter((topic: any) => topic.utility).map((topic: any) => (
+          {utilityTopics.map((topic: any) => (
             <button
               key={topic.utility}
               onClick={() => setActiveUtility(topic.utility as any)}
