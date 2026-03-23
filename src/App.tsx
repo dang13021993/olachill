@@ -883,7 +883,10 @@ const TicketSearch = ({
   const copyByLang = {
     vi: {
       panelTickets: 'Vé tham quan',
+      panelParks: 'Vé công viên',
+      panelCheapBus: 'Xe khách siêu rẻ',
       panelTransfer: 'Dịch vụ đưa đón',
+      panelPrivateCar: 'Thuê xe riêng',
       panelFood: 'Ẩm thực',
       sortLabel: 'Sắp xếp',
       sortPopular: 'Nổi tiếng',
@@ -895,10 +898,16 @@ const TicketSearch = ({
       priceMid: '3,001 - 6,000 JPY',
       priceHigh: '> 6,000 JPY',
       openKkdayTickets: 'Mở vé KKday Nhật Bản',
+      openKkdayParks: 'Mở vé công viên KKday',
+      openKkdayBus: 'Mở xe khách KKday',
       openKkdayTransfer: 'Mở dịch vụ đưa đón KKday',
+      openKkdayPrivateCar: 'Mở thuê xe riêng KKday',
       openKkdayFood: 'Mở ẩm thực KKday',
       ticketSourceNote: 'Nguồn vé: KKday Japan Attraction Tickets (affiliate)',
+      parksSourceNote: 'Nguồn vé công viên: KKday Japan Amusement Parks (affiliate)',
+      busSourceNote: 'Nguồn xe khách: KKday Transportation Japan (affiliate)',
       transferSourceNote: 'Nguồn dịch vụ đưa đón: KKday Transport & Car (affiliate)',
+      privateCarSourceNote: 'Nguồn thuê xe riêng: KKday Private Car Charter (affiliate)',
       foodSourceNote: 'Nguồn ẩm thực: KKday Restaurants (affiliate)',
       transferCategories: {
         all: 'Tất cả',
@@ -912,6 +921,22 @@ const TicketSearch = ({
         car: 'Thuê xe ô tô',
         flight: 'Chuyến bay'
       },
+      privateCarCategories: {
+        all: 'Tất cả',
+        charter: 'Xe charter',
+        airport: 'Đón tiễn sân bay',
+        city: 'Đi trong thành phố',
+        intercity: 'Liên tỉnh',
+        family: 'Gia đình/Nhóm'
+      },
+      busCategories: {
+        all: 'Tất cả',
+        airport: 'Bus sân bay',
+        highway: 'Bus liên tỉnh',
+        city: 'Bus nội đô',
+        night: 'Bus đêm',
+        pass: 'Vé/PASS'
+      },
       foodCategories: {
         all: 'Tất cả',
         sushi: 'Sushi',
@@ -923,7 +948,10 @@ const TicketSearch = ({
     },
     en: {
       panelTickets: 'Attraction Tickets',
+      panelParks: 'Amusement Parks',
+      panelCheapBus: 'Cheap Bus',
       panelTransfer: 'Transport Services',
+      panelPrivateCar: 'Private Car',
       panelFood: 'Food & Dining',
       sortLabel: 'Sort',
       sortPopular: 'Popular',
@@ -935,10 +963,16 @@ const TicketSearch = ({
       priceMid: '3,001 - 6,000 JPY',
       priceHigh: '> 6,000 JPY',
       openKkdayTickets: 'Open KKday Japan Tickets',
+      openKkdayParks: 'Open KKday Amusement Parks',
+      openKkdayBus: 'Open KKday Bus Deals',
       openKkdayTransfer: 'Open KKday Transport Services',
+      openKkdayPrivateCar: 'Open KKday Private Car',
       openKkdayFood: 'Open KKday Restaurants',
       ticketSourceNote: 'Ticket source: KKday Japan Attraction Tickets (affiliate)',
+      parksSourceNote: 'Parks source: KKday Japan Amusement Parks (affiliate)',
+      busSourceNote: 'Bus source: KKday Transportation Japan (affiliate)',
       transferSourceNote: 'Transport source: KKday Transport & Car (affiliate)',
+      privateCarSourceNote: 'Private car source: KKday Private Car Charter (affiliate)',
       foodSourceNote: 'Dining source: KKday Restaurants (affiliate)',
       transferCategories: {
         all: 'All',
@@ -952,6 +986,22 @@ const TicketSearch = ({
         car: 'Car Rental',
         flight: 'Flight'
       },
+      privateCarCategories: {
+        all: 'All',
+        charter: 'Charter',
+        airport: 'Airport Pickup',
+        city: 'City Ride',
+        intercity: 'Intercity',
+        family: 'Family/Group'
+      },
+      busCategories: {
+        all: 'All',
+        airport: 'Airport Bus',
+        highway: 'Highway Bus',
+        city: 'City Bus',
+        night: 'Night Bus',
+        pass: 'Pass/Ticket'
+      },
       foodCategories: {
         all: 'All',
         sushi: 'Sushi',
@@ -963,7 +1013,10 @@ const TicketSearch = ({
     },
     ja: {
       panelTickets: '観光チケット',
+      panelParks: '遊園地チケット',
+      panelCheapBus: '格安バス',
       panelTransfer: '送迎サービス',
+      panelPrivateCar: '貸切チャーター',
       panelFood: 'グルメ',
       sortLabel: '並び替え',
       sortPopular: '人気順',
@@ -975,10 +1028,16 @@ const TicketSearch = ({
       priceMid: '3,001 - 6,000 JPY',
       priceHigh: '6,000 JPY 超',
       openKkdayTickets: 'KKday 日本チケットを開く',
+      openKkdayParks: 'KKday 遊園地チケットを開く',
+      openKkdayBus: 'KKday 格安バスを開く',
       openKkdayTransfer: 'KKday 送迎サービスを開く',
+      openKkdayPrivateCar: 'KKday 貸切チャーターを開く',
       openKkdayFood: 'KKday グルメを開く',
       ticketSourceNote: 'チケット提供元: KKday Japan Attraction Tickets (affiliate)',
+      parksSourceNote: '遊園地チケット提供元: KKday Japan Amusement Parks (affiliate)',
+      busSourceNote: 'バス提供元: KKday Transportation Japan (affiliate)',
       transferSourceNote: '送迎提供元: KKday Transport & Car (affiliate)',
+      privateCarSourceNote: '貸切車両提供元: KKday Private Car Charter (affiliate)',
       foodSourceNote: 'グルメ提供元: KKday Restaurants (affiliate)',
       transferCategories: {
         all: 'すべて',
@@ -992,6 +1051,22 @@ const TicketSearch = ({
         car: 'レンタカー',
         flight: 'フライト'
       },
+      privateCarCategories: {
+        all: 'すべて',
+        charter: 'チャーター',
+        airport: '空港送迎',
+        city: '市内移動',
+        intercity: '都市間',
+        family: '家族・グループ'
+      },
+      busCategories: {
+        all: 'すべて',
+        airport: '空港バス',
+        highway: '高速バス',
+        city: '市内バス',
+        night: '夜行バス',
+        pass: 'パス・チケット'
+      },
       foodCategories: {
         all: 'すべて',
         sushi: '寿司',
@@ -1003,7 +1078,7 @@ const TicketSearch = ({
     }
   } as const;
   const cp = copyByLang[language];
-  type TicketPanel = 'tickets' | 'transfer' | 'food';
+  type TicketPanel = 'tickets' | 'parks' | 'bus' | 'transfer' | 'privatecar' | 'food';
   type TicketItem = {
     name: string;
     priceJpy: number;
@@ -1027,6 +1102,22 @@ const TicketSearch = ({
     cp.transferCategories.car,
     cp.transferCategories.flight
   ];
+  const privateCarCategories = [
+    cp.privateCarCategories.all,
+    cp.privateCarCategories.charter,
+    cp.privateCarCategories.airport,
+    cp.privateCarCategories.city,
+    cp.privateCarCategories.intercity,
+    cp.privateCarCategories.family
+  ];
+  const busCategories = [
+    cp.busCategories.all,
+    cp.busCategories.airport,
+    cp.busCategories.highway,
+    cp.busCategories.city,
+    cp.busCategories.night,
+    cp.busCategories.pass
+  ];
   const foodCategories = [
     cp.foodCategories.all,
     cp.foodCategories.sushi,
@@ -1038,18 +1129,27 @@ const TicketSearch = ({
 
   const [panelType, setPanelType] = useState<TicketPanel>('tickets');
   const [activeTicketCat, setActiveTicketCat] = useState<string>(ticketCategories[0]);
+  const [activeParkCat, setActiveParkCat] = useState<string>(ticketCategories[0]);
+  const [activeBusCat, setActiveBusCat] = useState<string>(busCategories[0]);
   const [activeTransferCat, setActiveTransferCat] = useState<string>(transferCategories[0]);
+  const [activePrivateCarCat, setActivePrivateCarCat] = useState<string>(privateCarCategories[0]);
   const [activeFoodCat, setActiveFoodCat] = useState<string>(foodCategories[0]);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc'>('popular');
   const [priceBand, setPriceBand] = useState<'all' | 'budget' | 'mid' | 'premium'>('all');
   const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
   const ticketAffiliateSlug = 'kkday-jp-attraction-tickets';
+  const parkAffiliateSlug = 'kkday-jp-amusement-parks';
+  const busAffiliateSlug = 'kkday-jp-cheap-bus';
   const transferAffiliateSlug = 'kkday-jp-transfer-services';
+  const privateCarAffiliateSlug = 'kkday-jp-private-car';
   const foodAffiliateSlug = 'kkday-global-restaurants';
 
   useEffect(() => {
     setActiveTicketCat(ticketCategories[0]);
+    setActiveParkCat(ticketCategories[0]);
+    setActiveBusCat(busCategories[0]);
     setActiveTransferCat(transferCategories[0]);
+    setActivePrivateCarCat(privateCarCategories[0]);
     setActiveFoodCat(foodCategories[0]);
   }, [language]);
 
@@ -1235,6 +1335,141 @@ const TicketSearch = ({
     }
   ];
 
+  const parkTickets: TicketItem[] = [
+    {
+      name: 'Tokyo Disneyland 1-Day Pass',
+      priceJpy: 8400,
+      icon: '🏰',
+      cat: t.categories.themePark,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/park-disney/400/250',
+      slug: parkAffiliateSlug
+    },
+    {
+      name: 'Universal Studios Japan Studio Pass',
+      priceJpy: 8600,
+      icon: '🎢',
+      cat: t.categories.themePark,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/park-usj/400/250',
+      slug: parkAffiliateSlug
+    },
+    {
+      name: 'Fuji-Q Highland Free Pass',
+      priceJpy: 6200,
+      icon: '🎡',
+      cat: t.categories.themePark,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/park-fujiq/400/250',
+      slug: parkAffiliateSlug
+    },
+    {
+      name: 'Nijigen no Mori Anime Park',
+      priceJpy: 4300,
+      icon: '🧩',
+      cat: t.categories.experience,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/park-anime/400/250',
+      slug: parkAffiliateSlug
+    }
+  ];
+
+  const privateCarServices: TicketItem[] = [
+    {
+      name: 'Tokyo Private Car 8-Hour Charter',
+      priceJpy: 14800,
+      icon: '🚘',
+      cat: cp.privateCarCategories.charter,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/private-car-1/400/250',
+      slug: privateCarAffiliateSlug
+    },
+    {
+      name: 'Narita/Haneda Airport Private Transfer',
+      priceJpy: 7600,
+      icon: '🛬',
+      cat: cp.privateCarCategories.airport,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/private-airport-1/400/250',
+      slug: privateCarAffiliateSlug
+    },
+    {
+      name: 'Osaka/Kyoto City Private Ride',
+      priceJpy: 9800,
+      icon: '🚗',
+      cat: cp.privateCarCategories.city,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/private-city-1/400/250',
+      slug: privateCarAffiliateSlug
+    },
+    {
+      name: 'Tokyo ⇄ Fuji Intercity Charter',
+      priceJpy: 16800,
+      icon: '🗻',
+      cat: cp.privateCarCategories.intercity,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/private-intercity-1/400/250',
+      slug: privateCarAffiliateSlug
+    },
+    {
+      name: 'Family Van with Child Seat',
+      priceJpy: 13200,
+      icon: '👨‍👩‍👧‍👦',
+      cat: cp.privateCarCategories.family,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/private-family-1/400/250',
+      slug: privateCarAffiliateSlug
+    }
+  ];
+
+  const cheapBusServices: TicketItem[] = [
+    {
+      name: 'Narita Limousine Bus Ticket',
+      priceJpy: 3200,
+      icon: '🚌',
+      cat: cp.busCategories.airport,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/bus-airport-1/400/250',
+      slug: busAffiliateSlug
+    },
+    {
+      name: 'Osaka ⇄ Kyoto Highway Bus',
+      priceJpy: 1800,
+      icon: '🛣️',
+      cat: cp.busCategories.highway,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/bus-highway-1/400/250',
+      slug: busAffiliateSlug
+    },
+    {
+      name: 'Tokyo City 24h Bus Pass',
+      priceJpy: 900,
+      icon: '🎫',
+      cat: cp.busCategories.pass,
+      rating: 4.5,
+      image: 'https://picsum.photos/seed/bus-pass-1/400/250',
+      slug: busAffiliateSlug
+    },
+    {
+      name: 'Shinjuku Night Bus to Osaka',
+      priceJpy: 4600,
+      icon: '🌙',
+      cat: cp.busCategories.night,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/bus-night-1/400/250',
+      slug: busAffiliateSlug
+    },
+    {
+      name: 'Sapporo City Loop Bus',
+      priceJpy: 1300,
+      icon: '🏙️',
+      cat: cp.busCategories.city,
+      rating: 4.4,
+      image: 'https://picsum.photos/seed/bus-city-1/400/250',
+      slug: busAffiliateSlug
+    }
+  ];
+
   const foodExperiences: TicketItem[] = [
     {
       name: 'Tokyo Omakase Sushi Experience',
@@ -1292,18 +1527,74 @@ const TicketSearch = ({
     }
   ];
 
-  const currentCategories =
-    panelType === 'tickets' ? ticketCategories : panelType === 'transfer' ? transferCategories : foodCategories;
-  const activeCat =
-    panelType === 'tickets' ? activeTicketCat : panelType === 'transfer' ? activeTransferCat : activeFoodCat;
-  const currentItems =
-    panelType === 'tickets' ? tickets : panelType === 'transfer' ? transferServices : foodExperiences;
-  const currentAffiliateSlug =
-    panelType === 'tickets' ? ticketAffiliateSlug : panelType === 'transfer' ? transferAffiliateSlug : foodAffiliateSlug;
-  const sourceNote =
-    panelType === 'tickets' ? cp.ticketSourceNote : panelType === 'transfer' ? cp.transferSourceNote : cp.foodSourceNote;
-  const sourceButtonLabel =
-    panelType === 'tickets' ? cp.openKkdayTickets : panelType === 'transfer' ? cp.openKkdayTransfer : cp.openKkdayFood;
+  const panelConfig: Record<
+    TicketPanel,
+    {
+      categories: string[];
+      activeCat: string;
+      items: TicketItem[];
+      slug: string;
+      sourceNote: string;
+      sourceButtonLabel: string;
+    }
+  > = {
+    tickets: {
+      categories: ticketCategories,
+      activeCat: activeTicketCat,
+      items: tickets,
+      slug: ticketAffiliateSlug,
+      sourceNote: cp.ticketSourceNote,
+      sourceButtonLabel: cp.openKkdayTickets
+    },
+    parks: {
+      categories: ticketCategories,
+      activeCat: activeParkCat,
+      items: parkTickets,
+      slug: parkAffiliateSlug,
+      sourceNote: cp.parksSourceNote,
+      sourceButtonLabel: cp.openKkdayParks
+    },
+    bus: {
+      categories: busCategories,
+      activeCat: activeBusCat,
+      items: cheapBusServices,
+      slug: busAffiliateSlug,
+      sourceNote: cp.busSourceNote,
+      sourceButtonLabel: cp.openKkdayBus
+    },
+    transfer: {
+      categories: transferCategories,
+      activeCat: activeTransferCat,
+      items: transferServices,
+      slug: transferAffiliateSlug,
+      sourceNote: cp.transferSourceNote,
+      sourceButtonLabel: cp.openKkdayTransfer
+    },
+    privatecar: {
+      categories: privateCarCategories,
+      activeCat: activePrivateCarCat,
+      items: privateCarServices,
+      slug: privateCarAffiliateSlug,
+      sourceNote: cp.privateCarSourceNote,
+      sourceButtonLabel: cp.openKkdayPrivateCar
+    },
+    food: {
+      categories: foodCategories,
+      activeCat: activeFoodCat,
+      items: foodExperiences,
+      slug: foodAffiliateSlug,
+      sourceNote: cp.foodSourceNote,
+      sourceButtonLabel: cp.openKkdayFood
+    }
+  };
+
+  const currentPanel = panelConfig[panelType];
+  const currentCategories = currentPanel.categories;
+  const activeCat = currentPanel.activeCat;
+  const currentItems = currentPanel.items;
+  const currentAffiliateSlug = currentPanel.slug;
+  const sourceNote = currentPanel.sourceNote;
+  const sourceButtonLabel = currentPanel.sourceButtonLabel;
 
   const filteredByCategory = activeCat === currentCategories[0]
     ? currentItems
@@ -1360,6 +1651,26 @@ const TicketSearch = ({
             {cp.panelTickets}
           </button>
           <button
+            onClick={() => setPanelType('parks')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              panelType === 'parks'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.panelParks}
+          </button>
+          <button
+            onClick={() => setPanelType('bus')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              panelType === 'bus'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.panelCheapBus}
+          </button>
+          <button
             onClick={() => setPanelType('transfer')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
               panelType === 'transfer'
@@ -1368,6 +1679,16 @@ const TicketSearch = ({
             }`}
           >
             {cp.panelTransfer}
+          </button>
+          <button
+            onClick={() => setPanelType('privatecar')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              panelType === 'privatecar'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+            }`}
+          >
+            {cp.panelPrivateCar}
           </button>
           <button
             onClick={() => setPanelType('food')}
@@ -1389,8 +1710,14 @@ const TicketSearch = ({
                 onClick={() => {
                   if (panelType === 'tickets') {
                     setActiveTicketCat(cat);
+                  } else if (panelType === 'parks') {
+                    setActiveParkCat(cat);
+                  } else if (panelType === 'bus') {
+                    setActiveBusCat(cat);
                   } else if (panelType === 'transfer') {
                     setActiveTransferCat(cat);
+                  } else if (panelType === 'privatecar') {
+                    setActivePrivateCarCat(cat);
                   } else {
                     setActiveFoodCat(cat);
                   }
@@ -1833,7 +2160,8 @@ const EsimShop = ({
       payNow: 'Thanh toán ngay',
       processing: 'Đang tạo đơn...',
       buyUnavailable: 'Tạm chưa khả dụng',
-      estimatedLabel: 'Ước tính'
+      estimatedLabel: 'Ước tính',
+      usdLine: 'Giá USD'
     },
     en: {
       title: 'Travel eSIM',
@@ -1870,7 +2198,8 @@ const EsimShop = ({
       payNow: 'Pay Now',
       processing: 'Creating order...',
       buyUnavailable: 'Unavailable',
-      estimatedLabel: 'Estimated'
+      estimatedLabel: 'Estimated',
+      usdLine: 'USD Price'
     },
     ja: {
       title: '旅行eSIM',
@@ -1907,7 +2236,8 @@ const EsimShop = ({
       payNow: '今すぐ支払う',
       processing: '注文を作成中...',
       buyUnavailable: '利用不可',
-      estimatedLabel: '概算'
+      estimatedLabel: '概算',
+      usdLine: 'USD価格'
     }
   } as const;
 
@@ -1975,6 +2305,23 @@ const EsimShop = ({
   const formatNumber = (value: number) => {
     const locale = language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US';
     return new Intl.NumberFormat(locale).format(value);
+  };
+
+  const toDisplayUsd = (plan: EsimPlan) => {
+    const normalizedCurrency = String(plan.currency || '').toUpperCase();
+    const amount = Number(plan.priceUsd || 0);
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    if (normalizedCurrency === 'USD') return amount;
+    if (normalizedCurrency === 'JPY') return amount / 150;
+    return amount;
+  };
+
+  const formatUsd = (value: number) => {
+    const locale = language === 'vi' ? 'en-US' : language === 'ja' ? 'ja-JP' : 'en-US';
+    return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
   };
 
   const loadPlans = async () => {
@@ -2124,7 +2471,7 @@ const EsimShop = ({
           <p className="text-sm text-stone-500">{copy.noPlans}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -2168,6 +2515,9 @@ const EsimShop = ({
                     <div className="text-right shrink-0">
                       <p className="text-2xl sm:text-3xl font-black text-sky-900 dark:text-sky-100">
                         ¥{formatNumber(toDisplayJpy(plan))}
+                      </p>
+                      <p className="text-sm text-sky-700 dark:text-sky-300 font-semibold mt-1">
+                        {copy.usdLine}: ${formatUsd(toDisplayUsd(plan))}
                       </p>
                       <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
                         {copy.basePrice}: <span className="line-through">¥{formatNumber(toBaseJpy(plan))}</span>
@@ -2250,7 +2600,7 @@ const EsimShop = ({
                   <div className="text-right">
                     <p className="text-3xl sm:text-5xl font-black text-stone-900 dark:text-white">{formatNumber(toDisplayJpy(selectedPlan))} JPY</p>
                     <p className="text-xs text-stone-400 dark:text-stone-500 mt-2">
-                      {copy.estimatedLabel}: {selectedPlan.priceUsd.toFixed(2)} {selectedPlan.currency}
+                      {copy.estimatedLabel}: ${formatUsd(toDisplayUsd(selectedPlan))} USD
                     </p>
                     <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
                       {copy.basePrice}: {formatNumber(toBaseJpy(selectedPlan))} JPY
@@ -3132,11 +3482,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
-  const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
   const [showDesktopUserMenu, setShowDesktopUserMenu] = useState(false);
   const [showMobileUserMenu, setShowMobileUserMenu] = useState(false);
   const [showMobileSettingPanel, setShowMobileSettingPanel] = useState(false);
-  const [currency, setCurrency] = useState<'VND' | 'USD' | 'JPY'>('VND');
+  const [currency, setCurrency] = useState('JPY');
   const [temperatureUnit, setTemperatureUnit] = useState<'C' | 'F'>('C');
 
   const t = translations[language];
@@ -3145,6 +3494,30 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     { code: 'en', label: 'English' },
     { code: 'ja', label: '日本語' }
   ];
+  const currencyOptions: { code: string; symbol: string; label: { vi: string; en: string; ja: string } }[] = [
+    { code: 'JPY', symbol: '¥', label: { vi: 'Yên Nhật', en: 'Japanese Yen', ja: '日本円' } },
+    { code: 'USD', symbol: '$', label: { vi: 'Đô la Mỹ', en: 'US Dollar', ja: '米ドル' } },
+    { code: 'VND', symbol: '₫', label: { vi: 'Đồng Việt Nam', en: 'Vietnamese Dong', ja: 'ベトナムドン' } },
+    { code: 'EUR', symbol: '€', label: { vi: 'Euro', en: 'Euro', ja: 'ユーロ' } },
+    { code: 'GBP', symbol: '£', label: { vi: 'Bảng Anh', en: 'British Pound', ja: '英ポンド' } },
+    { code: 'AUD', symbol: 'A$', label: { vi: 'Đô la Úc', en: 'Australian Dollar', ja: '豪ドル' } },
+    { code: 'CAD', symbol: 'C$', label: { vi: 'Đô la Canada', en: 'Canadian Dollar', ja: 'カナダドル' } },
+    { code: 'SGD', symbol: 'S$', label: { vi: 'Đô la Singapore', en: 'Singapore Dollar', ja: 'シンガポールドル' } },
+    { code: 'HKD', symbol: 'HK$', label: { vi: 'Đô la Hồng Kông', en: 'Hong Kong Dollar', ja: '香港ドル' } },
+    { code: 'KRW', symbol: '₩', label: { vi: 'Won Hàn Quốc', en: 'South Korean Won', ja: '韓国ウォン' } },
+    { code: 'CNY', symbol: '¥', label: { vi: 'Nhân dân tệ', en: 'Chinese Yuan', ja: '人民元' } },
+    { code: 'THB', symbol: '฿', label: { vi: 'Baht Thái', en: 'Thai Baht', ja: 'タイバーツ' } },
+    { code: 'TWD', symbol: 'NT$', label: { vi: 'Đô la Đài Loan', en: 'New Taiwan Dollar', ja: '台湾ドル' } },
+    { code: 'MYR', symbol: 'RM', label: { vi: 'Ringgit Malaysia', en: 'Malaysian Ringgit', ja: 'マレーシアリンギット' } },
+    { code: 'PHP', symbol: '₱', label: { vi: 'Peso Philippines', en: 'Philippine Peso', ja: 'フィリピンペソ' } },
+    { code: 'IDR', symbol: 'Rp', label: { vi: 'Rupiah Indonesia', en: 'Indonesian Rupiah', ja: 'インドネシアルピア' } },
+    { code: 'INR', symbol: '₹', label: { vi: 'Rupee Ấn Độ', en: 'Indian Rupee', ja: 'インドルピー' } },
+    { code: 'AED', symbol: 'د.إ', label: { vi: 'Dirham UAE', en: 'UAE Dirham', ja: 'UAEディルハム' } },
+    { code: 'CHF', symbol: 'CHF', label: { vi: 'Franc Thụy Sĩ', en: 'Swiss Franc', ja: 'スイスフラン' } },
+    { code: 'BRL', symbol: 'R$', label: { vi: 'Real Brazil', en: 'Brazilian Real', ja: 'ブラジルレアル' } }
+  ];
+  const majorCurrencyCycle = ['JPY', 'USD', 'VND'];
+  const currentCurrencyInfo = currencyOptions.find((item) => item.code === currency);
   const mobileMenuVersionLabel = 'V1.1.3-JP';
   const aboutLabel = language === 'vi' ? 'Giới thiệu' : language === 'ja' ? '紹介' : 'About';
   const esimPaymentLabel = language === 'vi' ? 'Thanh toán eSIM' : language === 'ja' ? 'eSIM決済' : 'eSIM Payment';
@@ -3154,12 +3527,17 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const manageSubscriptionLabel = language === 'vi' ? 'Quản lý gói' : language === 'ja' ? 'プラン管理' : 'Manage Subscription';
   const myTripsLabel = language === 'vi' ? 'Chuyến đi của tôi' : language === 'ja' ? 'マイトリップ' : 'My Trips';
   const currencyLabel = language === 'vi' ? `Tiền tệ (${currency})` : language === 'ja' ? `通貨 (${currency})` : `Currency (${currency})`;
+  const currencyListLabel = language === 'vi' ? 'Danh sách tiền tệ' : language === 'ja' ? '通貨リスト' : 'Currency List';
   const languageLabel = language === 'vi' ? 'Ngôn ngữ' : language === 'ja' ? '言語' : 'Language';
   const temperatureLabel = language === 'vi' ? `Nhiệt độ (°${temperatureUnit})` : language === 'ja' ? `温度 (°${temperatureUnit})` : `Temperature (°${temperatureUnit})`;
-  const currencySymbol = currency === 'USD' ? '$' : currency === 'JPY' ? '¥' : '₫';
+  const currencySymbol = currentCurrencyInfo?.symbol || currency;
   const languageBadge = language === 'vi' ? '🇻🇳' : language === 'ja' ? '🇯🇵' : '🇺🇸';
   const cycleCurrency = () => {
-    setCurrency((prev) => (prev === 'VND' ? 'USD' : prev === 'USD' ? 'JPY' : 'VND'));
+    setCurrency((prev) => {
+      const currentIndex = majorCurrencyCycle.indexOf(prev);
+      if (currentIndex < 0) return majorCurrencyCycle[0];
+      return majorCurrencyCycle[(currentIndex + 1) % majorCurrencyCycle.length];
+    });
   };
   const cycleLanguage = () => {
     setLanguage((prev) => (prev === 'vi' ? 'en' : prev === 'en' ? 'ja' : 'vi'));
@@ -3925,6 +4303,28 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                         <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">5 lượt/ngày</p>
                       </div>
 
+                      <div className="px-4 py-3 border-b border-stone-100 dark:border-stone-800">
+                        <p className="text-[10px] uppercase tracking-[0.16em] font-black text-stone-400 dark:text-stone-500 mb-2">
+                          {currencyListLabel}
+                        </p>
+                        <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                          {currencyOptions.map((option) => (
+                            <button
+                              key={`desktop-currency-${option.code}`}
+                              onClick={() => setCurrency(option.code)}
+                              className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                                currency === option.code
+                                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                                  : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-emerald-400/60'
+                              }`}
+                              title={option.label[language]}
+                            >
+                              {option.code}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div className="p-2 space-y-1">
                         {authLoading ? (
                           <button
@@ -4168,9 +4568,27 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                       exit={{ opacity: 0, y: -8 }}
                       className="ml-6 mt-1 mb-2 border-l border-stone-200 dark:border-stone-700 pl-3 space-y-1"
                     >
-                      <div className="flex items-center gap-2 px-2 py-2 text-stone-700 dark:text-stone-300">
-                        <CircleDollarSign size={18} className="text-stone-400" />
-                        <span className="text-sm font-medium">{currencyLabel}</span>
+                      <div className="px-2 py-2">
+                        <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-2">
+                          <CircleDollarSign size={18} className="text-stone-400" />
+                          <span className="text-sm font-medium">{currencyLabel}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                          {currencyOptions.map((option) => (
+                            <button
+                              key={`mobile-currency-${option.code}`}
+                              onClick={() => setCurrency(option.code)}
+                              className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                                currency === option.code
+                                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                                  : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-emerald-400/60'
+                              }`}
+                              title={option.label[language]}
+                            >
+                              {option.code}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 px-2 py-2 text-stone-700 dark:text-stone-300">
                         <Thermometer size={18} className="text-stone-400" />
@@ -4713,7 +5131,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       {/* Quick Tools - Always visible at bottom */}
       <div className="hidden md:block fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-8 left-0 right-0 z-40 pointer-events-none">
         <div className="max-w-4xl mx-auto px-3 pointer-events-auto overflow-hidden">
-          <div className="flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
+          <div className="mx-auto flex w-fit max-w-full gap-2 justify-center overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1 pr-1">
           {utilityTopics.map((topic: any) => (
             <button
               key={topic.utility}

@@ -8,8 +8,20 @@ body,
   max-width: 100%;
   overflow-x: hidden;
   overflow-x: clip;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable both-edges;
 }
 
 body {
   position: relative;
+  min-height: 100dvh;
+  touch-action: pan-y;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
