@@ -116,4 +116,10 @@ Quick smoke test sau deploy:
 curl -sL https://olachill.com/api/health
 curl -sL "https://olachill.com/api/esim/plans?country=JP" | head -c 300
 curl -sL "https://olachill.com/api/public-config" | head -c 400
+
+# eSIM guard checks (JP-only + order validation)
+curl -sL "https://olachill.com/api/esim/plans?country=US" | head -c 500
+curl -sL -X POST "https://olachill.com/api/esim/order" \
+  -H "Content-Type: application/json" \
+  -d '{"planId":"invalid-plan-id","paymentMethod":"bank_transfer"}'
 ```

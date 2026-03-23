@@ -1212,6 +1212,8 @@ interface EsimPlan {
   displayPriceJpy?: number;
   priceDiffJpy?: number;
   discountRate?: number;
+  markupRate?: number;
+  priceChangePercent?: number;
   features?: string[];
 }
 
@@ -1366,6 +1368,16 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
     return Math.max(0, toDisplayJpy(plan) - toBaseJpy(plan));
   };
 
+  const toPriceChangePercent = (plan: EsimPlan) => {
+    if (typeof plan.priceChangePercent === 'number' && Number.isFinite(plan.priceChangePercent)) {
+      return Math.round(plan.priceChangePercent);
+    }
+    const base = toBaseJpy(plan);
+    const display = toDisplayJpy(plan);
+    if (base <= 0) return 0;
+    return Math.round(((display - base) / base) * 100);
+  };
+
   const getPlanHighlights = (plan: EsimPlan): string[] => {
     const providerHighlights = Array.isArray(plan.features)
       ? plan.features.map((item) => String(item || '').trim()).filter(Boolean)
@@ -1444,8 +1456,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planId: plan.id,
-          paymentMethod,
-          providerAmountRaw: plan.providerAmountRaw
+          paymentMethod
         })
       });
       const json = await resp.json();
@@ -1579,7 +1590,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                       </p>
                       {toPriceGapJpy(plan) > 0 ? (
                         <p className="text-xs mt-1 inline-flex px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold">
-                          +¥{formatNumber(toPriceGapJpy(plan))} {copy.priceGap}
+                          +¥{formatNumber(toPriceGapJpy(plan))} ({toPriceChangePercent(plan)}%) {copy.priceGap}
                         </p>
                       ) : null}
                     </div>
@@ -1662,7 +1673,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                     </p>
                     {toPriceGapJpy(selectedPlan) > 0 ? (
                       <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                        +{formatNumber(toPriceGapJpy(selectedPlan))} JPY {copy.priceGap}
+                        +{formatNumber(toPriceGapJpy(selectedPlan))} JPY ({toPriceChangePercent(selectedPlan)}%) {copy.priceGap}
                       </p>
                     ) : null}
                   </div>

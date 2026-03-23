@@ -33,6 +33,8 @@ interface EsimPlan {
   displayPriceJpy?: number;
   priceDiffJpy?: number;
   discountRate?: number;
+  markupRate?: number;
+  priceChangePercent?: number;
   features?: string[];
 }
 
@@ -97,6 +99,27 @@ const DEFAULT_ESIM_PLANS: EsimPlan[] = [
     currency: "USD"
   }
 ];
+
+const ESIM_ALLOWED_COUNTRY = "JP";
+const JAPAN_COUNTRY_CODES = new Set(["JP", "JPN", "JAPAN"]);
+
+function normalizeCountryCode(rawCountry: unknown): string {
+  const raw = String(rawCountry || "").trim().toUpperCase();
+  if (!raw) return "";
+  const primary = raw.split(",")[0]?.trim() || raw;
+  if (JAPAN_COUNTRY_CODES.has(primary)) {
+    return ESIM_ALLOWED_COUNTRY;
+  }
+  return primary;
+}
+
+function isJapanCountryCode(rawCountry: unknown): boolean {
+  return normalizeCountryCode(rawCountry) === ESIM_ALLOWED_COUNTRY;
+}
+
+function filterJapanPlans(plans: EsimPlan[]): EsimPlan[] {
+  return plans.filter((plan) => isJapanCountryCode(plan.country));
+}
 
 function parsePartnerLinksFromEnv(): PartnerLinkMap {
   const raw = process.env.AFFILIATE_LINKS_JSON;
@@ -365,8 +388,8 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
     .map((plan: any) => {
       const id = String(plan.id || plan.planId || plan.packageCode || plan.slug || "").trim();
       const name = String(plan.name || plan.title || "eSIM Plan").trim();
-      const countryRaw = String(plan.country || plan.countryCode || plan.locationCode || plan.location || "JP").trim().toUpperCase();
-      const country = countryRaw.split(",")[0]?.trim() || "JP";
+      const countryRaw = String(plan.country || plan.countryCode || plan.locationCode || plan.location || ESIM_ALLOWED_COUNTRY).trim();
+      const country = normalizeCountryCode(countryRaw) || ESIM_ALLOWED_COUNTRY;
       const data = String(
         plan.data ||
         plan.dataAllowance ||
@@ -419,9 +442,11 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
           : applyEsimMarkup(originalJpy).final;
       const saleJpy = Math.max(originalJpy, saleJpyComputed);
       const diffJpy = Math.max(0, saleJpy - originalJpy);
-      const discountRate = originalJpy > 0
-        ? Math.min(99, Math.max(0, Math.round((diffJpy / originalJpy) * 100)))
+      const priceChangePercent = originalJpy > 0
+        ? Math.round(((saleJpy - originalJpy) / originalJpy) * 100)
         : 0;
+      const discountRate = priceChangePercent < 0 ? Math.abs(priceChangePercent) : 0;
+      const markupRate = priceChangePercent > 0 ? priceChangePercent : 0;
 
       return {
         id,
@@ -442,6 +467,8 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
         displayPriceJpy: saleJpy,
         priceDiffJpy: diffJpy,
         discountRate,
+        markupRate,
+        priceChangePercent,
         features: deriveFeatureList(plan)
       } satisfies EsimPlan;
     })
@@ -594,7 +621,8 @@ async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] |
     throw new Error(`eSIM provider plans errorCode=${json?.errorCode || "unknown"} message=${json?.errorMsg || json?.errorMessage || "unknown"} endpoint=${url.pathname}`);
   }
 
-  return normalizeEsimPlans(json);
+  const normalizedPlans = normalizeEsimPlans(json);
+  return filterJapanPlans(normalizedPlans);
 }
 
 async function createEsimOrderWithProvider(
@@ -937,8 +965,12 @@ async function startServer() {
   });
 
   app.get("/api/esim/plans", async (req, res) => {
-    const country = String(req.query.country || "JP").trim().toUpperCase();
+    const requestedCountry = String(req.query.country || ESIM_ALLOWED_COUNTRY).trim().toUpperCase();
+    const country = ESIM_ALLOWED_COUNTRY;
     const providerConfigured = isEsimProviderConfigured();
+    if (requestedCountry && requestedCountry !== ESIM_ALLOWED_COUNTRY) {
+      console.log(`esim/plans country locked to ${ESIM_ALLOWED_COUNTRY}, requested=${requestedCountry}`);
+    }
 
     try {
       const providerPlans = await fetchEsimPlansFromProvider(country);
@@ -946,6 +978,7 @@ async function startServer() {
         res.json({
           source: "provider",
           providerConfigured,
+          countryLocked: country,
           plans: providerPlans
         });
         return;
@@ -954,21 +987,23 @@ async function startServer() {
       console.error("eSIM provider plans failed:", error);
     }
 
-    const localPlans = DEFAULT_ESIM_PLANS.filter((p) => p.country === country);
+    const localPlans = filterJapanPlans(DEFAULT_ESIM_PLANS);
     res.json({
       source: "local-fallback",
       providerConfigured,
-      plans: localPlans.length > 0 ? localPlans : DEFAULT_ESIM_PLANS
+      countryLocked: country,
+      plans: localPlans.length > 0 ? localPlans : filterJapanPlans(DEFAULT_ESIM_PLANS)
     });
   });
 
   app.post("/api/esim/order", async (req, res) => {
-    const { planId, email, providerAmountRaw } = req.body || {};
+    const { planId, email } = req.body || {};
 
     if (typeof planId !== "string" || !planId.trim()) {
       res.status(400).json({ error: "planId is required" });
       return;
     }
+    const normalizedPlanId = String(planId).trim();
 
     if (!isEsimProviderConfigured()) {
       res.status(503).json({
@@ -979,15 +1014,39 @@ async function startServer() {
       return;
     }
 
+    let providerPlans: EsimPlan[] = [];
+    try {
+      providerPlans = (await fetchEsimPlansFromProvider(ESIM_ALLOWED_COUNTRY)) || [];
+    } catch (error) {
+      console.error("eSIM provider plans preload failed for order:", error);
+      res.status(502).json({ error: "Failed to load JP eSIM plans from provider" });
+      return;
+    }
+
+    if (!providerPlans.length) {
+      res.status(502).json({ error: "Provider returned no JP eSIM plans" });
+      return;
+    }
+
+    const selectedPlan = providerPlans.find((plan) => plan.id === normalizedPlanId);
+    if (!selectedPlan) {
+      res.status(400).json({
+        error: "Invalid planId for JP eSIM plans",
+        countryLocked: ESIM_ALLOWED_COUNTRY
+      });
+      return;
+    }
+
     try {
       const providerOrder = await createEsimOrderWithProvider(
-        planId,
+        normalizedPlanId,
         typeof email === "string" ? email : undefined,
-        providerAmountRaw
+        selectedPlan.providerAmountRaw
       );
       if (providerOrder) {
         res.json({
           source: "provider",
+          countryLocked: ESIM_ALLOWED_COUNTRY,
           ...providerOrder
         });
         return;
