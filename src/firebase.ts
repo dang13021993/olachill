@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -22,36 +21,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
-
-const MOBILE_UA_REGEX = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
-
-const shouldUseRedirectLogin = () => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  const ua = window.navigator.userAgent.toLowerCase();
-  const isMobile = MOBILE_UA_REGEX.test(ua);
-  const isIOS = /iphone|ipad|ipod/.test(ua);
-  const isWebKitSafari = /safari/.test(ua) && !/crios|fxios|edgios|opios/.test(ua);
-  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || (window.navigator as any).standalone === true;
-  return isMobile || isStandalone || (isIOS && isWebKitSafari);
-};
-
-const POPUP_FALLBACK_CODES = new Set([
-  'auth/popup-blocked',
-  'auth/popup-closed-by-user',
-  'auth/cancelled-popup-request',
-  'auth/operation-not-supported-in-this-environment',
-  'auth/internal-error',
-  'auth/web-storage-unsupported'
-]);
-
-const AUTH_CONFIGURATION_CODES = new Set([
-  'auth/unauthorized-domain',
-  'auth/operation-not-allowed',
-  'auth/invalid-api-key',
-  'auth/app-not-authorized'
-]);
 
 let persistencePromise: Promise<void> | null = null;
 
@@ -86,30 +55,10 @@ void ensureAuthPersistence();
 // Auth Helpers
 export const loginWithGoogle = async () => {
   await ensureAuthPersistence();
-  const preferRedirect = shouldUseRedirectLogin();
-
-  if (preferRedirect) {
-    await signInWithRedirect(auth, googleProvider);
-    return null;
-  }
-
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
-  } catch (error: any) {
-    const code = String(error?.code || '');
-    if (!AUTH_CONFIGURATION_CODES.has(code) && (POPUP_FALLBACK_CODES.has(code) || code.startsWith('auth/'))) {
-      try {
-        await signInWithRedirect(auth, googleProvider);
-        return null;
-      } catch (redirectError) {
-        console.error("Redirect login error:", redirectError);
-        throw redirectError;
-      }
-    }
-    console.error("Login error:", error);
-    throw error;
-  }
+  // Force redirect flow on all platforms for maximum compatibility.
+  // This avoids popup callback issues seen on some desktop/mobile browsers.
+  await signInWithRedirect(auth, googleProvider);
+  return null;
 };
 
 export const consumeRedirectLoginResult = async () => {
