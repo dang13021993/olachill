@@ -7,6 +7,9 @@ const GEMINI_KEY =
   (import.meta as any).env?.VITE_GEMINI_API_KEY || 
   '';
 
+const USE_SERVER_AI_ONLY = true;
+const DIRECT_GEMINI_MODEL = (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
+
 const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
 
 const parseApiErrorMessage = async (resp: Response) => {
@@ -193,8 +196,8 @@ export const generateTravelPlan = async (
 
   console.log("Generating NEW travel plan for:", prompt, "in", language);
 
-  // If frontend build does not contain GEMINI_API_KEY, fallback to server-side generation.
-  if (!GEMINI_KEY) {
+  // Keep all AI calls on server so model/key config is centralized in Cloud Run.
+  if (USE_SERVER_AI_ONLY || !GEMINI_KEY) {
     try {
       const parsed = await generateTravelPlanViaServer(prompt, history, language);
       try {
@@ -235,7 +238,7 @@ export const generateTravelPlan = async (
     const targetLang = langMap[language];
 
     const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: DIRECT_GEMINI_MODEL,
       config: {
         systemInstruction: `You are a Japan travel expert.
         
@@ -484,7 +487,7 @@ export const generateTravelPlan = async (
 
 
 export const getPlaceInfo = async (placeName: string, language: 'en' | 'ja' | 'vi' = 'vi') => {
-  if (!GEMINI_KEY) {
+  if (USE_SERVER_AI_ONLY || !GEMINI_KEY) {
     return await getPlaceInfoViaServer(placeName, language);
   }
 
@@ -494,7 +497,7 @@ export const getPlaceInfo = async (placeName: string, language: 'en' | 'ja' | 'v
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: DIRECT_GEMINI_MODEL,
       contents: `Detailed information about: ${placeName}. Include history, highlights, and how to get there. ${langPrompt} Concise, Markdown format.`,
     });
 

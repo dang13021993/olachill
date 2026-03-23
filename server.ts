@@ -6,6 +6,14 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 type PartnerLinkMap = Record<string, string>;
 
+interface AffiliateCoupon {
+  id: string;
+  partner: string;
+  code: string;
+  slug: string;
+  note?: string;
+}
+
 interface EsimPlan {
   id: string;
   name: string;
@@ -40,8 +48,25 @@ const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
   "ghibli-museum": "https://www.ghibli-museum.jp/en/tickets/",
   "tokyo-skytree": "https://www.tokyo-skytree.jp/en/ticket/",
   "kyoto-kimono": "https://www.yumeyakata.com/english/",
-  "nara-deer-park": "https://www.visitnara.jp/"
+  "nara-deer-park": "https://www.visitnara.jp/",
+  "klook": "https://www.klook.com/",
+  "kkday": "https://www.kkday.com/"
 };
+
+const DEFAULT_AFFILIATE_COUPONS: AffiliateCoupon[] = [
+  {
+    id: "klook",
+    partner: "Klook",
+    code: "",
+    slug: "klook"
+  },
+  {
+    id: "kkday",
+    partner: "KKday",
+    code: "",
+    slug: "kkday"
+  }
+];
 
 const DEFAULT_ESIM_PLANS: EsimPlan[] = [
   {
@@ -100,6 +125,84 @@ function getPartnerLinks(): PartnerLinkMap {
     ...DEFAULT_PARTNER_LINKS,
     ...parsePartnerLinksFromEnv()
   };
+}
+
+function parseAffiliateCouponsFromEnv(): AffiliateCoupon[] {
+  const envCodeByPartner: Record<string, string> = {
+    klook: String(process.env.KLOOK_COUPON_CODE || "").trim(),
+    kkday: String(process.env.KKDAY_COUPON_CODE || "").trim()
+  };
+
+  const raw = process.env.AFFILIATE_COUPONS_JSON;
+  if (!raw) {
+    return DEFAULT_AFFILIATE_COUPONS.map((item) => ({
+      ...item,
+      code: envCodeByPartner[item.id] || item.code
+    }));
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const entries = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === "object"
+        ? Object.entries(parsed).map(([id, value]) => {
+            if (value && typeof value === "object") {
+              return { id, ...(value as Record<string, unknown>) };
+            }
+            return { id, code: String(value || "") };
+          })
+        : [];
+
+    const normalized = entries
+      .map((item: any) => {
+        const id = String(item?.id || item?.partner || item?.name || "")
+          .trim()
+          .toLowerCase();
+        const partner = String(item?.partner || item?.name || item?.id || "").trim();
+        const slug = String(item?.slug || id).trim().toLowerCase();
+        const code = String(
+          item?.code ||
+          item?.voucher ||
+          item?.discountCode ||
+          envCodeByPartner[id] ||
+          ""
+        ).trim();
+        const note = typeof item?.note === "string" ? item.note.trim() : undefined;
+        if (!id || !partner || !slug) return null;
+        return { id, partner, slug, code, note } satisfies AffiliateCoupon;
+      })
+      .filter(Boolean) as AffiliateCoupon[];
+
+    if (normalized.length === 0) {
+      return DEFAULT_AFFILIATE_COUPONS.map((item) => ({
+        ...item,
+        code: envCodeByPartner[item.id] || item.code
+      }));
+    }
+
+    return normalized;
+  } catch {
+    return DEFAULT_AFFILIATE_COUPONS.map((item) => ({
+      ...item,
+      code: envCodeByPartner[item.id] || item.code
+    }));
+  }
+}
+
+function getAffiliateCoupons(): AffiliateCoupon[] {
+  const envCoupons = parseAffiliateCouponsFromEnv();
+  const merged = new Map<string, AffiliateCoupon>();
+
+  for (const item of DEFAULT_AFFILIATE_COUPONS) {
+    merged.set(item.id, item);
+  }
+
+  for (const item of envCoupons) {
+    merged.set(item.id, item);
+  }
+
+  return Array.from(merged.values());
 }
 
 function toNum(value: unknown): number | null {
@@ -351,6 +454,37 @@ function resolveTargetLanguage(language: string): string {
   return "VIETNAMESE (Tiếng Việt)";
 }
 
+const DEFAULT_GEMINI_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-3-flash-preview"];
+
+function getGeminiModelCandidates(): string[] {
+  const configured = String(process.env.GEMINI_MODEL || "").trim();
+  const merged = [configured, ...DEFAULT_GEMINI_MODELS].filter(Boolean);
+  return Array.from(new Set(merged));
+}
+
+async function generateGeminiContentWithFallback(
+  ai: GoogleGenAI,
+  payload: { contents: string; config?: any }
+): Promise<{ response: any; model: string }> {
+  const attempts: string[] = [];
+
+  for (const model of getGeminiModelCandidates()) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: payload.contents,
+        config: payload.config
+      });
+      return { response, model };
+    } catch (error: any) {
+      const reason = String(error?.message || error || "unknown error").replace(/\s+/g, " ").trim();
+      attempts.push(`${model}: ${reason.slice(0, 180)}`);
+    }
+  }
+
+  throw new Error(`All configured AI models failed. ${attempts.join(" | ")}`.slice(0, 900));
+}
+
 function buildHistoryContext(history: Array<{ role: "user" | "model"; text: string }>): string {
   if (!Array.isArray(history) || history.length === 0) return "";
   return history
@@ -358,6 +492,38 @@ function buildHistoryContext(history: Array<{ role: "user" | "model"; text: stri
     .map((h) => `${h.role === "user" ? "User" : "AI"}: ${String(h.text || "").trim()}`)
     .filter(Boolean)
     .join("\n");
+}
+
+function parseJsonFromAiText(rawText: string): any {
+  const text = String(rawText || "").trim();
+  if (!text) {
+    throw new Error("Empty AI response");
+  }
+
+  const candidates: string[] = [text];
+
+  // Common format from LLMs: ```json ... ```
+  const codeFenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeFenceMatch?.[1]) {
+    candidates.push(codeFenceMatch[1].trim());
+  }
+
+  // Fallback: best-effort extraction between first "{" and last "}".
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidates.push(text.slice(firstBrace, lastBrace + 1).trim());
+  }
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error("AI returned invalid JSON format");
 }
 
 function resolveProviderEndpoint(baseUrl: string, endpointOrUrl: string): URL {
@@ -535,7 +701,8 @@ async function startServer() {
     res.json({
       checkoutBasicUrl: process.env.CHECKOUT_BASIC_URL || process.env.VITE_CHECKOUT_BASIC_URL || "",
       checkoutProUrl: process.env.CHECKOUT_PRO_URL || process.env.VITE_CHECKOUT_PRO_URL || "",
-      checkoutUltraUrl: process.env.CHECKOUT_ULTRA_URL || process.env.VITE_CHECKOUT_ULTRA_URL || ""
+      checkoutUltraUrl: process.env.CHECKOUT_ULTRA_URL || process.env.VITE_CHECKOUT_ULTRA_URL || "",
+      affiliateCoupons: getAffiliateCoupons()
     });
   });
 
@@ -575,8 +742,7 @@ async function startServer() {
         .filter(Boolean)
         .join("\n");
 
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+      const { response, model } = await generateGeminiContentWithFallback(ai, {
         contents: requestText,
         config: {
           responseMimeType: "application/json",
@@ -692,25 +858,19 @@ async function startServer() {
           }
         }
       });
+      console.log(`travel/generate model=${model}`);
 
-      const text = String(response.text || "").trim();
-      if (!text) {
-        res.status(502).json({ error: "Empty AI response" });
-        return;
-      }
-
-      let parsed: any;
       try {
-        parsed = JSON.parse(text);
-      } catch {
-        res.status(502).json({ error: "AI returned invalid JSON format" });
-        return;
+        const parsed = parseJsonFromAiText(String(response.text || ""));
+        res.json(parsed);
+      } catch (parseError) {
+        const detail = parseError instanceof Error ? parseError.message : "AI returned invalid JSON format";
+        res.status(502).json({ error: detail });
       }
-
-      res.json(parsed);
     } catch (error) {
       console.error("travel/generate failed:", error);
-      res.status(502).json({ error: "Failed to generate travel plan from AI" });
+      const detail = error instanceof Error ? error.message : "Failed to generate travel plan from AI";
+      res.status(502).json({ error: detail.slice(0, 500) });
     }
   });
 
@@ -737,13 +897,13 @@ async function startServer() {
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+      const { response, model } = await generateGeminiContentWithFallback(ai, {
         contents: `Detailed information about: ${placeName}. Include highlights and practical tips for travelers. ${langPrompt}`,
         config: {
           tools: [{ googleSearch: {} }]
         }
       });
+      console.log(`travel/place-info model=${model}`);
 
       res.json({
         text: response.text || "No information.",

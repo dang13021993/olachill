@@ -1,5 +1,18 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence
+} from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -26,7 +39,8 @@ const POPUP_FALLBACK_CODES = new Set([
   'auth/popup-closed-by-user',
   'auth/cancelled-popup-request',
   'auth/operation-not-supported-in-this-environment',
-  'auth/internal-error'
+  'auth/internal-error',
+  'auth/web-storage-unsupported'
 ]);
 
 const AUTH_CONFIGURATION_CODES = new Set([
@@ -36,8 +50,40 @@ const AUTH_CONFIGURATION_CODES = new Set([
   'auth/app-not-authorized'
 ]);
 
+let persistencePromise: Promise<void> | null = null;
+
+const ensureAuthPersistence = async () => {
+  if (persistencePromise) {
+    return persistencePromise;
+  }
+
+  persistencePromise = (async () => {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      return;
+    } catch (localErr) {
+      console.warn('Failed to set local auth persistence, fallback to session:', localErr);
+    }
+
+    try {
+      await setPersistence(auth, browserSessionPersistence);
+      return;
+    } catch (sessionErr) {
+      console.warn('Failed to set session auth persistence, fallback to memory:', sessionErr);
+    }
+
+    await setPersistence(auth, inMemoryPersistence);
+  })();
+
+  return persistencePromise;
+};
+
+void ensureAuthPersistence();
+
 // Auth Helpers
 export const loginWithGoogle = async () => {
+  await ensureAuthPersistence();
+
   if (shouldUseRedirectLogin()) {
     await signInWithRedirect(auth, googleProvider);
     return null;
@@ -63,6 +109,7 @@ export const loginWithGoogle = async () => {
 };
 
 export const consumeRedirectLoginResult = async () => {
+  await ensureAuthPersistence();
   try {
     const result = await getRedirectResult(auth);
     return result?.user || null;

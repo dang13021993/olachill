@@ -40,7 +40,8 @@ import {
   CreditCard,
   Landmark,
   Paperclip,
-  Mic
+  Mic,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -193,42 +194,22 @@ const TrainSearch = ({
   initialMode?: TransitMode
 }) => {
   const t = translations[language];
-  const modeCopyByLang = {
-    vi: {
-      trainTitle: t.trainSearchTitle,
-      trainSubtitle: t.trainSearchSubtitle,
-      busTitle: 'Tra cứu tuyến xe bus',
-      busSubtitle: 'Dữ liệu xe bus local tiết kiệm chi phí'
-    },
-    en: {
-      trainTitle: t.trainSearchTitle,
-      trainSubtitle: t.trainSearchSubtitle,
-      busTitle: 'Bus Route Search',
-      busSubtitle: 'Local bus timetable data (cost-saving)'
-    },
-    ja: {
-      trainTitle: t.trainSearchTitle,
-      trainSubtitle: t.trainSearchSubtitle,
-      busTitle: 'バス路線検索',
-      busSubtitle: 'ローカルバス時刻表データ（低コスト）'
-    }
-  } as const;
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('09:00');
-  const [mode, setMode] = useState<TransitMode>(initialMode);
+  const mode: TransitMode = 'train';
   const [showResults, setShowResults] = useState(false);
   const [fromSuggestions, setFromSuggestions] = useState<string[]>([]);
   const [toSuggestions, setToSuggestions] = useState<string[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
-  const modeCopy = modeCopyByLang[language];
 
   useEffect(() => {
-    setMode(initialMode);
-    setShowResults(false);
-    setResults([]);
+    if (initialMode !== 'train') {
+      setShowResults(false);
+      setResults([]);
+    }
   }, [initialMode]);
 
   const getSuggestions = (val: string) => {
@@ -276,11 +257,11 @@ const TrainSearch = ({
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <span className="text-lg">{mode === 'train' ? '🚄' : '🚌'}</span>
+            <span className="text-lg">🚄</span>
           </div>
           <div>
-            <h3 className="text-xl font-serif dark:text-white">{mode === 'train' ? modeCopy.trainTitle : modeCopy.busTitle}</h3>
-            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{mode === 'train' ? modeCopy.trainSubtitle : modeCopy.busSubtitle}</p>
+            <h3 className="text-xl font-serif dark:text-white">{t.trainSearchTitle}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.trainSearchSubtitle}</p>
           </div>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
@@ -290,31 +271,9 @@ const TrainSearch = ({
 
       {!showResults ? (
         <form onSubmit={handleSearch} className="space-y-6">
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setMode('train')}
-              className={`py-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
-                mode === 'train'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20'
-                  : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
-              }`}
-            >
-              <span>🚄</span>
-              <span>{t.transitTrain}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('bus')}
-              className={`py-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
-                mode === 'bus'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20'
-                  : 'bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-100 dark:border-stone-700 hover:bg-stone-100'
-              }`}
-            >
-              <span>🚌</span>
-              <span>{t.transitBus}</span>
-            </button>
+          <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 px-4 py-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <span>🚄</span>
+            <span className="text-xs font-bold">{t.trainSearchTitle}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -462,7 +421,7 @@ const CafeSearch = ({ onClose, language }: { onClose: () => void, language: Lang
       Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -574,7 +533,7 @@ const SecondHandSearch = ({ onClose, language }: { onClose: () => void, language
       Respond in ${language === 'vi' ? 'Vietnamese' : language === 'ja' ? 'Japanese' : 'English'}.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -1058,6 +1017,179 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
         )}
       </AnimatePresence>
     </>
+  );
+};
+
+interface AffiliateCoupon {
+  id: string;
+  partner: string;
+  code: string;
+  slug: string;
+  note?: string;
+}
+
+const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; language: Language }) => {
+  const copyByLang = {
+    vi: {
+      title: 'Mã giảm giá đối tác',
+      subtitle: 'Klook & KKday (tiếp thị liên kết)',
+      codeLabel: 'Mã ưu đãi',
+      codeMissing: 'Đang dùng link ưu đãi trực tiếp (không cần mã).',
+      copyCode: 'Sao chép mã',
+      copied: 'Đã sao chép',
+      openLink: 'Mở ưu đãi',
+      sourceNote: 'Link được mở qua thương hiệu Olachill (/go/...) để không lộ link gốc.',
+      noteLabel: 'Lưu ý',
+      copyPrompt: 'Không thể tự động sao chép. Hãy copy thủ công mã này:'
+    },
+    en: {
+      title: 'Affiliate Coupons',
+      subtitle: 'Klook & KKday partner deals',
+      codeLabel: 'Promo code',
+      codeMissing: 'Direct partner offer link (no code required).',
+      copyCode: 'Copy code',
+      copied: 'Copied',
+      openLink: 'Open deal',
+      sourceNote: 'Links are opened via Olachill branded route (/go/...) to hide raw affiliate URLs.',
+      noteLabel: 'Note',
+      copyPrompt: 'Unable to auto-copy. Please copy this code manually:'
+    },
+    ja: {
+      title: '提携クーポン',
+      subtitle: 'Klook・KKday の提携オファー',
+      codeLabel: 'クーポンコード',
+      codeMissing: 'コード不要の提携リンクです。',
+      copyCode: 'コードをコピー',
+      copied: 'コピー済み',
+      openLink: 'オファーを開く',
+      sourceNote: 'リンクは Olachill のブランド導線 (/go/...) 経由で開きます。',
+      noteLabel: 'メモ',
+      copyPrompt: '自動コピーできませんでした。手動でコピーしてください:'
+    }
+  } as const;
+
+  const t = copyByLang[language];
+  const [coupons, setCoupons] = useState<AffiliateCoupon[]>([
+    { id: 'klook', partner: 'Klook', code: '', slug: 'klook' },
+    { id: 'kkday', partner: 'KKday', code: '', slug: 'kkday' }
+  ]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/public-config')
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((json) => {
+        if (!active || !json) return;
+        const raw = Array.isArray(json?.affiliateCoupons) ? json.affiliateCoupons : [];
+        const normalized = raw
+          .map((item: any) => ({
+            id: String(item?.id || '').trim().toLowerCase(),
+            partner: String(item?.partner || '').trim(),
+            code: String(item?.code || '').trim(),
+            slug: String(item?.slug || item?.id || '').trim().toLowerCase(),
+            note: typeof item?.note === 'string' ? item.note.trim() : undefined
+          }))
+          .filter((item: AffiliateCoupon) => item.id && item.partner && item.slug);
+
+        if (normalized.length > 0) {
+          setCoupons(normalized);
+        }
+      })
+      .catch(() => {
+        // Keep default coupons.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openAffiliate = (slug: string) => {
+    window.open(`/go/${slug}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const copyCouponCode = async (item: AffiliateCoupon) => {
+    if (!item.code) return;
+    try {
+      await navigator.clipboard.writeText(item.code);
+      setCopiedId(item.id);
+      window.setTimeout(() => setCopiedId(null), 1600);
+    } catch {
+      window.prompt(t.copyPrompt, item.code);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <Ticket size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-serif dark:text-white">{t.title}</h3>
+            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.subtitle}</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+          <X size={20} className="text-stone-400" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {coupons.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-800/50 p-5"
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-xs uppercase tracking-widest font-bold text-stone-400">{item.partner}</p>
+                <h4 className="text-2xl font-black text-stone-900 dark:text-white mt-1">{item.partner}</h4>
+              </div>
+              <button
+                onClick={() => openAffiliate(item.slug)}
+                className="shrink-0 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-1"
+              >
+                {t.openLink}
+                <ExternalLink size={14} />
+              </button>
+            </div>
+
+            <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-2">{t.codeLabel}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700 px-3 py-2.5 bg-white dark:bg-stone-900">
+                <p className="text-sm font-mono font-bold text-emerald-700 dark:text-emerald-300 break-all">
+                  {item.code || t.codeMissing}
+                </p>
+              </div>
+              <button
+                onClick={() => copyCouponCode(item)}
+                disabled={!item.code}
+                className="shrink-0 px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-600 dark:text-stone-300 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                {copiedId === item.id ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                {copiedId === item.id ? t.copied : t.copyCode}
+              </button>
+            </div>
+
+            {item.note ? (
+              <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+                <span className="font-bold">{t.noteLabel}: </span>
+                {item.note}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-5">{t.sourceNote}</p>
+    </motion.div>
   );
 };
 
@@ -2240,6 +2372,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const mobileMenuVersionLabel = 'V1.1.3-JP';
   const aboutLabel = language === 'vi' ? 'Giới thiệu' : language === 'ja' ? '紹介' : 'About';
   const esimPaymentLabel = language === 'vi' ? 'Thanh toán eSIM' : language === 'ja' ? 'eSIM決済' : 'eSIM Payment';
+  const couponDealsLabel = language === 'vi' ? 'Mã giảm giá' : language === 'ja' ? 'クーポン' : 'Coupon Deals';
+  const mobileLoginLabel = language === 'vi' ? 'Đăng nhập' : language === 'ja' ? 'ログイン' : 'Login';
   const sessionsStorageKey = 'olachill_sessions';
   const legacySessionsStorageKey = 'japan_ai_sessions';
   const aiProcessingLabel = language === 'vi' ? `${t.appName} đang xử lý...` : language === 'ja' ? `${t.appName} が処理中...` : `${t.appName} is processing...`;
@@ -2270,7 +2404,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const suggestedTopics = t.suggestedTopics;
   const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility);
 
-  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'esim'>(null);
+  const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'esim' | 'coupons'>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -2667,10 +2801,11 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               <button
                 onClick={handleLogin}
                 disabled={loginPending}
-                className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center gap-1.5 px-3 shadow-lg shadow-emerald-600/20 disabled:opacity-70 disabled:cursor-not-allowed"
                 title={t.login}
               >
                 {loginPending ? <Loader2 className="animate-spin" size={18} /> : <User size={18} />}
+                <span className="text-[11px] font-bold leading-none">{mobileLoginLabel}</span>
               </button>
             )}
           </div>
@@ -2760,14 +2895,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
 
-            {user && userPrefs && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/50 mr-2">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                  {t.personalization.welcomeBack.replace('{name}', user.displayName?.split(' ')[0] || 'Traveler')}
-                </span>
-              </div>
-            )}
             {authLoading ? (
               <div className="w-10 h-10 flex items-center justify-center">
                 <Loader2 className="animate-spin text-stone-400" size={20} />
@@ -2913,6 +3040,15 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                       className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
                     >
                       {esimPaymentLabel}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        setActiveUtility('coupons');
+                      }}
+                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
+                    >
+                      {couponDealsLabel}
                     </button>
                     <button
                       onClick={() => {
@@ -3106,6 +3242,12 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                     )}
                     {activeUtility === 'esim' && (
                       <EsimShop
+                        onClose={() => setActiveUtility(null)}
+                        language={language}
+                      />
+                    )}
+                    {activeUtility === 'coupons' && (
+                      <AffiliateCouponTool
                         onClose={() => setActiveUtility(null)}
                         language={language}
                       />

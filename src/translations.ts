@@ -5,7 +5,7 @@ export interface SuggestedTopic {
   description: string;
   icon: string;
   query?: string;
-  utility?: 'train' | 'tickets' | 'esim';
+  utility?: 'train' | 'tickets' | 'esim' | 'coupons';
 }
 
 export const translations = {
@@ -153,6 +153,7 @@ export const translations = {
       { text: 'Train Search', description: 'Check routes & prices', utility: 'train', icon: '🚄' },
       { text: 'Sightseeing Tickets', description: 'Book Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIM Data', description: 'Buy Japan eSIM quickly', utility: 'esim', icon: '📶' },
+      { text: 'Coupon Deals', description: 'Klook & KKday affiliate offers', utility: 'coupons', icon: '🏷️' },
       { text: 'Tokyo Stations', description: 'Major train stations in Tokyo', query: 'List major train stations in Tokyo and their features', icon: '🚉' },
       { text: 'Nagoya Parking', description: 'Cheap and convenient parking in Nagoya', query: 'Cheap and convenient parking in Nagoya', icon: '🅿️' },
       { text: 'Kimono in Osaka', description: 'Best rental shops in Osaka', query: 'Best kimono rental shops in Osaka', icon: '👘' },
@@ -304,6 +305,7 @@ export const translations = {
       { text: '乗換案内', description: 'ルートと料金を確認', utility: 'train', icon: '🚄' },
       { text: '観光チケット', description: 'ディズニー、USJなどを予約', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIMデータ', description: '日本のeSIMを購入', utility: 'esim', icon: '📶' },
+      { text: 'クーポン', description: 'Klook・KKdayの提携オファー', utility: 'coupons', icon: '🏷️' },
       { text: '東京の駅', description: '東京の主要な駅と特徴', query: '東京の主要な駅とその特徴を教えてください', icon: '🚉' },
       { text: '名古屋の駐車場', description: '名古屋の安くて便利な駐車場', query: '名古屋の安くて便利な駐車場', icon: '🅿️' },
       { text: '大阪の着物', description: 'おすすめのレンタル店', query: '大阪でおすすめの着物レンタル店', icon: '👘' },
@@ -455,6 +457,7 @@ export const translations = {
       { text: 'Tra tàu', description: 'Kiểm tra lộ trình & giá vé', utility: 'train', icon: '🚄' },
       { text: 'Vé tham quan', description: 'Đặt vé Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIM du lịch', description: 'Mua eSIM Nhật Bản nhanh', utility: 'esim', icon: '📶' },
+      { text: 'Mã giảm giá', description: 'Ưu đãi tiếp thị liên kết Klook & KKday', utility: 'coupons', icon: '🏷️' },
       { text: 'Ga tàu Tokyo', description: 'Các ga tàu lớn và đặc điểm tại Tokyo', query: 'Danh sách các ga tàu lớn ở Tokyo và đặc điểm của chúng', icon: '🚉' },
       { text: 'Bãi đỗ xe Nagoya', description: 'Tìm kiếm bãi đỗ xe thuận tiện và các điểm vui chơi tại Nagoya.', query: 'Tìm kiếm bãi đỗ xe thuận tiện và các điểm vui chơi tại Nagoya.', icon: '🅿️' },
       { text: 'Kimono ở Osaka', description: 'Trải nghiệm mặc Kimono truyền thống tại các cửa hàng uy tín ở Osaka.', query: 'Tiệm cho thuê kimono tốt nhất ở Osaka', icon: '👘' },

@@ -95,9 +95,25 @@ gcloud run services update-traffic "$SERVICE" --to-latest --region "$REGION"
 ## 5) Runtime env checklist (de flow mobile on dinh)
 
 Cloud Run variables:
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (khuyen nghi: `gemini-1.5-flash`)
 - `CHECKOUT_BASIC_URL`
 - `CHECKOUT_PRO_URL`
 - `ESIM_PROVIDER_BASE_URL`
 - `ESIM_PROVIDER_API_KEY`
+- `AFFILIATE_LINKS_JSON` (co key `klook`, `kkday`)
+- `KLOOK_COUPON_CODE` / `KKDAY_COUPON_CODE` (neu co)
 
 Neu thieu bien, UI van hien duoc flow nhung co the khong mo duoc checkout that.
+
+Firebase Auth checklist:
+- Authorized domains bat buoc co: `olachill.com`, `www.olachill.com`
+- Google provider phai `Enabled`
+
+Quick smoke test sau deploy:
+
+```bash
+curl -sL https://olachill.com/api/health
+curl -sL "https://olachill.com/api/esim/plans?country=JP" | head -c 300
+curl -sL "https://olachill.com/api/public-config" | head -c 400
+```
