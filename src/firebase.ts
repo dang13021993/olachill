@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -25,7 +25,15 @@ const POPUP_FALLBACK_CODES = new Set([
   'auth/popup-blocked',
   'auth/popup-closed-by-user',
   'auth/cancelled-popup-request',
-  'auth/operation-not-supported-in-this-environment'
+  'auth/operation-not-supported-in-this-environment',
+  'auth/internal-error'
+]);
+
+const AUTH_CONFIGURATION_CODES = new Set([
+  'auth/unauthorized-domain',
+  'auth/operation-not-allowed',
+  'auth/invalid-api-key',
+  'auth/app-not-authorized'
 ]);
 
 // Auth Helpers
@@ -40,11 +48,26 @@ export const loginWithGoogle = async () => {
     return result.user;
   } catch (error: any) {
     const code = String(error?.code || '');
-    if (POPUP_FALLBACK_CODES.has(code)) {
-      await signInWithRedirect(auth, googleProvider);
-      return null;
+    if (!AUTH_CONFIGURATION_CODES.has(code) && (POPUP_FALLBACK_CODES.has(code) || code.startsWith('auth/'))) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      } catch (redirectError) {
+        console.error("Redirect login error:", redirectError);
+        throw redirectError;
+      }
     }
     console.error("Login error:", error);
+    throw error;
+  }
+};
+
+export const consumeRedirectLoginResult = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    return result?.user || null;
+  } catch (error) {
+    console.error("Redirect result error:", error);
     throw error;
   }
 };

@@ -46,7 +46,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { generateTravelPlan, getPlaceInfo, TravelPlan } from './services/travelService';
 import { searchTransitLocal, TransitMode } from './services/transitService';
-import { auth, loginWithGoogle, logout, db } from './firebase';
+import { auth, loginWithGoogle, consumeRedirectLoginResult, logout, db } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -2104,25 +2104,29 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [loginPending, setLoginPending] = useState(false);
   const [userPrefs, setUserPrefs] = useState<any>(null);
+  const loginAlertShownRef = useRef(false);
 
   const getLoginErrorMessage = (error: any) => {
     const code = String(error?.code || '');
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'current-domain';
+    const requiredDomains = Array.from(new Set(['olachill.com', 'www.olachill.com', currentHost])).join(', ');
     if (language === 'vi') {
-      if (code === 'auth/unauthorized-domain') return 'Domain này chưa được bật trong Firebase Auth. Hãy thêm olachill.com vào Authorized domains.';
+      if (code === 'auth/unauthorized-domain') return `Domain "${currentHost}" chưa được bật trong Firebase Auth. Hãy thêm vào Authorized domains: ${requiredDomains}`;
       if (code === 'auth/operation-not-allowed') return 'Google Sign-In chưa bật trong Firebase Authentication.';
       if (code === 'auth/invalid-api-key') return 'Firebase API key không hợp lệ.';
       if (code === 'auth/network-request-failed') return 'Lỗi mạng khi đăng nhập. Vui lòng thử lại.';
       return 'Đăng nhập thất bại. Vui lòng thử lại.';
     }
     if (language === 'ja') {
-      if (code === 'auth/unauthorized-domain') return 'Firebase Auth の許可ドメインにこのドメインが未登録です。olachill.com を追加してください。';
+      if (code === 'auth/unauthorized-domain') return `Firebase Auth の許可ドメインに "${currentHost}" が未登録です。追加するドメイン: ${requiredDomains}`;
       if (code === 'auth/operation-not-allowed') return 'Firebase Authentication で Google ログインが有効化されていません。';
       if (code === 'auth/invalid-api-key') return 'Firebase API キーが無効です。';
       if (code === 'auth/network-request-failed') return 'ネットワークエラーのためログインできません。';
       return 'ログインに失敗しました。再試行してください。';
     }
-    if (code === 'auth/unauthorized-domain') return 'This domain is not authorized in Firebase Auth. Add olachill.com to Authorized domains.';
+    if (code === 'auth/unauthorized-domain') return `This domain "${currentHost}" is not authorized in Firebase Auth. Add these domains: ${requiredDomains}`;
     if (code === 'auth/operation-not-allowed') return 'Google Sign-In is not enabled in Firebase Authentication.';
     if (code === 'auth/invalid-api-key') return 'Invalid Firebase API key.';
     if (code === 'auth/network-request-failed') return 'Network error while signing in. Please try again.';
@@ -2130,19 +2134,31 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   };
 
   const handleLogin = async () => {
+    if (loginPending) return;
+    setLoginPending(true);
     try {
       await loginWithGoogle();
     } catch (error) {
       console.error('Login failed:', error);
       alert(getLoginErrorMessage(error));
+      setLoginPending(false);
     }
   };
+
+  useEffect(() => {
+    consumeRedirectLoginResult().catch((error) => {
+      if (loginAlertShownRef.current) return;
+      loginAlertShownRef.current = true;
+      alert(getLoginErrorMessage(error));
+    });
+  }, [language]);
 
   // Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setAuthLoading(false);
+      setLoginPending(false);
     });
     return () => unsubscribe();
   }, []);
@@ -2580,10 +2596,11 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             ) : (
               <button 
                 onClick={handleLogin}
-                className="ml-1 sm:ml-2 px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 sm:gap-2 shrink-0"
+                disabled={loginPending}
+                className="ml-1 sm:ml-2 px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 sm:gap-2 shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <User size={18} />
-                <span className="hidden sm:inline">{t.login}</span>
+                {loginPending ? <Loader2 className="animate-spin" size={18} /> : <User size={18} />}
+                <span className="hidden sm:inline">{loginPending ? (language === 'vi' ? 'Đang đăng nhập...' : language === 'ja' ? 'ログイン中...' : 'Signing in...') : t.login}</span>
               </button>
             )}
           </div>
