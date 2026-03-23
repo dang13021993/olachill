@@ -1,4 +1,5 @@
 export type TransitMode = "train" | "bus";
+export type TransitLanguage = "vi" | "en" | "ja";
 
 export interface TransitResult {
   type: string;
@@ -91,7 +92,33 @@ const CITY_ALIASES: Record<string, string> = {
   "kita-kamakura": "Kamakura",
   sapporo: "Sapporo",
   fukuoka: "Fukuoka",
-  hiroshima: "Hiroshima"
+  hiroshima: "Hiroshima",
+  東京: "Tokyo",
+  新宿: "Tokyo",
+  渋谷: "Tokyo",
+  上野: "Tokyo",
+  浅草: "Tokyo",
+  品川: "Tokyo",
+  池袋: "Tokyo",
+  秋葉原: "Tokyo",
+  銀座: "Tokyo",
+  恵比寿: "Tokyo",
+  大阪: "Osaka",
+  新大阪: "Osaka",
+  難波: "Osaka",
+  梅田: "Osaka",
+  京都: "Kyoto",
+  祇園四条: "Kyoto",
+  名古屋: "Nagoya",
+  横浜: "Yokohama",
+  福岡: "Fukuoka",
+  博多: "Fukuoka",
+  札幌: "Sapporo",
+  広島: "Hiroshima",
+  奈良: "Nara",
+  神戸: "Kobe",
+  鎌倉: "Kamakura",
+  河口湖: "Kawaguchiko"
 };
 
 const TRAIN_TEMPLATES: Record<string, TransitTemplate[]> = {
@@ -205,7 +232,7 @@ function canonicalizeCity(rawInput: string): string | null {
     .trim()
     .toLowerCase()
     .replace(/station$/g, "")
-    .replace(/[^\w\s-]/g, "")
+    .replace(/[^\w\s\u3040-\u30ff\u3400-\u9fff-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
   if (!normalized) {
@@ -319,11 +346,69 @@ function buildResultsFromTemplates(templates: TransitTemplate[], time: string, m
   });
 }
 
+function localizeResults(results: TransitResult[], language: TransitLanguage): TransitResult[] {
+  if (language !== "ja") {
+    return results;
+  }
+  const JA_LABELS: Record<string, string> = {
+    "Shinkansen Nozomi": "新幹線 のぞみ",
+    "Shinkansen Hikari": "新幹線 ひかり",
+    "Shinkansen Sakura": "新幹線 さくら",
+    "JR + Local": "JR＋在来線",
+    "JR Special Rapid": "JR 新快速",
+    "JR Limited Express": "JR 特急",
+    "Hankyu + Subway": "阪急＋地下鉄",
+    "Kintetsu Rapid Express": "近鉄 快速急行",
+    "JR Yamatoji Rapid": "JR 大和路快速",
+    "Local + Transfer": "在来線＋乗換",
+    "Hanshin Railway": "阪神電鉄",
+    "JR Tokaido Line": "JR 東海道線",
+    "JR Shonan-Shinjuku": "JR 湘南新宿ライン",
+    "Odakyu Romancecar": "小田急 ロマンスカー",
+    "Shinkansen + Local": "新幹線＋在来線",
+    "Local + Rapid": "在来線＋快速",
+    "Fuji Excursion": "富士回遊",
+    "JR + Fujikyu": "JR＋富士急行",
+    "Willer Express Night Bus": "Willer 夜行バス",
+    "JR Highway Bus": "JR 高速バス",
+    "Premium Seat Night Bus": "プレミアム夜行バス",
+    "JR Dream Bus": "JR ドリームバス",
+    "Keihan Highway Bus": "京阪 高速バス",
+    "Hankyu Bus": "阪急バス",
+    "Airport Limousine + City Bus": "空港リムジン＋市バス",
+    "Fujikyuko Highway Bus": "富士急 高速バス",
+    "Keio Highway Bus": "京王 高速バス",
+    "Express Bus + Local": "高速バス＋ローカル",
+    "Kyoto Kotsu Direct Bus": "京都交通 直行バス",
+    "Kintetsu Nara Bus": "近鉄奈良バス",
+    "Intercity Night Bus": "都市間 夜行バス",
+    "Express Bus + Ferry": "高速バス＋フェリー",
+    "Long-distance Bus": "長距離バス",
+    "Tokyu Limousine Bus": "東急 リムジンバス",
+    "Keikyu Express Bus": "京急 エクスプレスバス",
+    "City Bus + Local": "市バス＋ローカル",
+    "Metro + Local": "地下鉄＋在来線",
+    "Rapid + Walk": "快速＋徒歩",
+    "City Bus Direct": "市バス直行",
+    "Bus + Transfer": "バス＋乗換",
+    "Local Bus": "路線バス",
+    "Highway Bus": "高速バス",
+    "Express Bus": "急行バス",
+    "Bus + Local": "バス＋ローカル"
+  };
+
+  return results.map((item) => ({
+    ...item,
+    type: JA_LABELS[item.type] || item.type
+  }));
+}
+
 export function searchTransitLocal(
   fromRaw: string,
   toRaw: string,
   time: string,
-  mode: TransitMode = "train"
+  mode: TransitMode = "train",
+  language: TransitLanguage = "vi"
 ): TransitResult[] {
   const from = canonicalizeCity(fromRaw);
   const to = canonicalizeCity(toRaw);
@@ -332,12 +417,12 @@ export function searchTransitLocal(
   }
 
   if (from === to) {
-    return buildResultsFromTemplates(buildIntraCityTemplates(mode), time, mode);
+    return localizeResults(buildResultsFromTemplates(buildIntraCityTemplates(mode), time, mode), language);
   }
 
   const key = routeKey(from, to);
   const routeTemplates = mode === "train" ? NORMALIZED_TRAIN_TEMPLATES[key] : NORMALIZED_BUS_TEMPLATES[key];
   const templates = routeTemplates && routeTemplates.length > 0 ? routeTemplates : buildFallbackTemplates(from, to, mode);
 
-  return buildResultsFromTemplates(templates, time, mode);
+  return localizeResults(buildResultsFromTemplates(templates, time, mode), language);
 }

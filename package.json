@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
+    "@paypayopa/paypayopa-sdk-node": "^2.1.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.14",
     "@vis.gl/react-google-maps": "^1.7.1",

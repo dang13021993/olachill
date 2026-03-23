@@ -41,12 +41,20 @@ import {
   Landmark,
   Paperclip,
   Mic,
-  Copy
+  Copy,
+  ChevronDown,
+  Settings,
+  FileText,
+  LogIn,
+  LogOut,
+  CircleDollarSign,
+  Languages,
+  Thermometer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { generateTravelPlan, getPlaceInfo, TravelPlan } from './services/travelService';
-import { searchTransitLocal, TransitMode } from './services/transitService';
+import { searchTransitLocal, TransitMode, TransitLanguage } from './services/transitService';
 import { auth, loginWithGoogle, consumeRedirectLoginResult, logout, db } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -153,10 +161,15 @@ const searchTransit = async (
   to: string,
   _date: string,
   time: string,
-  _language: Language,
+  language: Language,
   mode: TransitMode
 ) => {
-  return searchTransitLocal(from, to, time, mode);
+  const hasJapaneseInput = /[\u3040-\u30ff\u3400-\u9fff]/.test(`${from}${to}`);
+  const transitLanguage: TransitLanguage =
+    language === 'ja' || hasJapaneseInput
+      ? 'ja'
+      : (language as TransitLanguage);
+  return searchTransitLocal(from, to, time, mode, transitLanguage);
 };
 
 // --- Components ---
@@ -180,17 +193,22 @@ const JAPAN_STATIONS_BY_CITY: Record<string, string[]> = {
 
 const ALL_STATIONS = Array.from(new Set([
   ...Object.keys(JAPAN_STATIONS_BY_CITY),
-  ...Object.values(JAPAN_STATIONS_BY_CITY).flat()
+  ...Object.values(JAPAN_STATIONS_BY_CITY).flat(),
+  '東京', '新宿', '渋谷', '上野', '品川', '池袋', '秋葉原', '浅草',
+  '大阪', '難波', '梅田', '京都', '名古屋', '横浜', '博多', '福岡',
+  '札幌', '広島', '奈良', '神戸', '鎌倉', '河口湖'
 ]));
 
 const TrainSearch = ({
   onClose,
   language,
-  initialMode = 'train'
+  initialMode = 'train',
+  fullLayout = false
 }: {
   onClose: () => void,
   language: Language,
-  initialMode?: TransitMode
+  initialMode?: TransitMode,
+  fullLayout?: boolean
 }) => {
   const t = translations[language];
   const [from, setFrom] = useState('');
@@ -247,11 +265,45 @@ const TrainSearch = ({
     setShowResults(true);
   };
 
+  const formatDateForJorudan = (rawDate: string) => {
+    const [yyyy, mm, dd] = rawDate.split('-');
+    if (!yyyy || !mm || !dd) return rawDate;
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const hasJapaneseInput = /[\u3040-\u30ff\u3400-\u9fff]/.test(`${from}${to}`);
+  const jorudanLocale = hasJapaneseInput ? 'ja' : language === 'ja' ? 'ja' : language === 'en' ? 'en' : 'vi';
+  const jorudanUrl =
+    `https://world.jorudan.co.jp/mln/${jorudanLocale}/?p=0&xpd=1` +
+    `&from=${encodeURIComponent(from)}` +
+    `&to=${encodeURIComponent(to)}` +
+    `&date=${encodeURIComponent(formatDateForJorudan(date))}` +
+    `&time=${encodeURIComponent(time)}` +
+    `&ft=0&ic=0&us=0&up=0&ut=0&nzm=0&sub_lang=nosub` +
+    `&estf=${encodeURIComponent(from)}` +
+    `&estt=${encodeURIComponent(to)}`;
+
+  const openJorudan = () => {
+    if (!from || !to) return;
+    window.open(jorudanUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const openJorudanLabel =
+    language === 'vi'
+      ? 'Mở Jorudan chính thức'
+      : language === 'ja'
+        ? 'Jorudan公式で確認'
+        : 'Open Official Jorudan';
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-2xl w-full max-h-[88vh] sm:max-h-[80vh] overflow-y-auto"
+      className={`bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl w-full ${
+        fullLayout
+          ? 'max-w-none max-h-none overflow-visible'
+          : 'max-w-2xl max-h-[88vh] sm:max-h-[80vh] overflow-y-auto'
+      }`}
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -359,12 +411,23 @@ const TrainSearch = ({
             {searching ? <Loader2 className="animate-spin" /> : null}
             {t.searchRoute}
           </button>
+          <button
+            type="button"
+            onClick={openJorudan}
+            disabled={!from || !to}
+            className="w-full border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 py-3 rounded-2xl text-sm font-bold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+          >
+            {openJorudanLabel}
+          </button>
         </form>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center justify-between mb-4 px-2">
+          <div className="flex items-center justify-between mb-4 px-2 gap-2">
             <p className="text-sm font-medium text-stone-500">{t.resultsFor}: <span className="text-stone-900 dark:text-white font-bold">{from} → {to}</span></p>
-            <button onClick={() => setShowResults(false)} className="text-xs text-blue-600 font-bold hover:underline">{t.changeSearch}</button>
+            <div className="flex items-center gap-2">
+              <button onClick={openJorudan} className="text-xs text-blue-600 font-bold hover:underline whitespace-nowrap">{openJorudanLabel}</button>
+              <button onClick={() => setShowResults(false)} className="text-xs text-blue-600 font-bold hover:underline whitespace-nowrap">{t.changeSearch}</button>
+            </div>
           </div>
           {results.length > 0 ? results.map((res, i) => (
             <div key={i} className="bg-stone-50 dark:bg-stone-800 p-5 rounded-2xl border border-stone-100 dark:border-stone-700 hover:border-blue-500/30 transition-all">
@@ -807,7 +870,15 @@ const Personalization = ({ onClose, language, user, currentPrefs }: { onClose: (
   );
 };
 
-const TicketSearch = ({ onClose, language }: { onClose: () => void, language: Language }) => {
+const TicketSearch = ({
+  onClose,
+  language,
+  fullLayout = false
+}: {
+  onClose: () => void,
+  language: Language,
+  fullLayout?: boolean
+}) => {
   const t = translations[language];
   const copyByLang = {
     vi: {
@@ -1256,7 +1327,11 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+        className={`bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl w-full ${
+          fullLayout
+            ? 'max-w-none max-h-none overflow-visible'
+            : 'max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto'
+        }`}
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -1711,9 +1786,17 @@ interface EsimPlan {
   features?: string[];
 }
 
-type EsimPaymentMethod = 'paypay' | 'stripe' | 'paypal' | 'bank_transfer';
+type EsimPaymentMethod = 'stripe' | 'paypal' | 'bank_transfer';
 
-const EsimShop = ({ onClose, language }: { onClose: () => void; language: Language }) => {
+const EsimShop = ({
+  onClose,
+  language,
+  fullLayout = false
+}: {
+  onClose: () => void;
+  language: Language;
+  fullLayout?: boolean;
+}) => {
   const copyByLang = {
     vi: {
       title: 'eSIM du lịch',
@@ -1835,10 +1918,9 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   const [providerConfigured, setProviderConfigured] = useState(true);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<EsimPlan | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<EsimPaymentMethod>('paypay');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<EsimPaymentMethod>('stripe');
 
   const paymentMethods: { key: EsimPaymentMethod; label: string; icon: React.ReactNode }[] = [
-    { key: 'paypay', label: copy.methodPaypay, icon: <CreditCard size={20} /> },
     { key: 'stripe', label: copy.methodStripe, icon: <CreditCard size={20} /> },
     { key: 'paypal', label: copy.methodPaypal, icon: <CreditCard size={20} /> },
     { key: 'bank_transfer', label: copy.methodBank, icon: <Landmark size={20} /> }
@@ -1933,7 +2015,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       return;
     }
     setSelectedPlan(plan);
-    setSelectedPaymentMethod('paypay');
+    setSelectedPaymentMethod('stripe');
   };
 
   const handleBuy = async (plan: EsimPlan, paymentMethod: EsimPaymentMethod): Promise<boolean> => {
@@ -1993,7 +2075,11 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+      className={`bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl w-full ${
+        fullLayout
+          ? 'max-w-none max-h-none overflow-visible'
+          : 'max-w-7xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto'
+      }`}
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -2038,7 +2124,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
           <p className="text-sm text-stone-500">{copy.noPlans}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -2128,7 +2214,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
               initial={{ opacity: 0, scale: 0.95, y: 14 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 14 }}
-              className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl"
+              className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl"
             >
               <div className="flex items-start justify-between mb-7">
                 <div className="flex items-center gap-3">
@@ -2214,89 +2300,135 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   );
 };
 
-type UpgradePlanId = 'free' | 'basic' | 'pro' | 'ultra';
+type UpgradePlanId = 'free' | 'pro' | 'vip';
+type UpgradeBillingCycle = 'trial' | 'monthly' | 'yearly';
 
 const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: Language }) => {
   const supportEmail = 'lovejapan12345@gmail.com';
   const copyByLang = {
     vi: {
-      title: 'Nâng cấp gói',
-      subtitle: 'Nhận thêm câu hỏi và tính năng',
-      questionsLeft: 'Câu hỏi còn lại',
+      title: 'Nâng cấp gói Ola',
+      subtitle: 'Tăng trải nghiệm, kiểm soát chi phí và mở khóa ưu đãi độc quyền.',
+      highlights: ['Lịch trình đầy đủ', 'Ưu đãi khách sạn độc quyền', 'Mã giảm giá độc quyền', 'Hỗ trợ chuyên gia'],
       currentPlan: 'Gói hiện tại',
-      upgradeNow: 'Nâng cấp ngay',
       processing: 'Đang xử lý...',
-      free: 'Miễn phí',
-      basic: 'Cơ bản',
-      pro: 'Chuyên nghiệp',
-      ultra: 'Cao cấp',
-      autoPayNotice: 'Đang mở cổng thanh toán...',
-      autoPayHint: 'Nếu cổng thanh toán không mở, vui lòng dùng nút Email hỗ trợ bên dưới.',
+      startNow: 'Bắt đầu',
+      contactSupport: 'Liên hệ Email hỗ trợ',
       checkoutMissing: 'Gói này chưa có link thanh toán trực tiếp.',
-      contactSupport: 'Liên hệ qua Email',
-      payoutHint: 'Cấu hình link checkout qua VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL / VITE_CHECKOUT_ULTRA_URL.'
+      freeActivated: 'Đã chuyển về gói miễn phí 3 ngày.',
+      bestValue: 'GIÁ TRỊ TỐT NHẤT',
+      freeName: 'Gói miễn phí',
+      proName: 'Ola Pro',
+      vipName: 'Ola Vip',
+      trialOptionTitle: 'Bắt đầu với bản dùng thử miễn phí 3 ngày',
+      trialOptionDesc: 'Giới hạn lịch trình tối đa 3 ngày. Từ yêu cầu 5 ngày sẽ được nhắc nâng cấp.',
+      yearlyOptionTitle: 'Thanh toán hàng năm',
+      monthlyOptionTitle: 'Thanh toán hàng tháng',
+      perMonth: '/tháng',
+      planFeatureProQuestion: 'Tối đa 100 câu hỏi/tháng (quá 100 sẽ nhắc nâng cấp Ola Vip)',
+      planFeatureProUnlimited: 'Lập kế hoạch không giới hạn',
+      planFeatureProCoupon: 'Mã giảm giá độc quyền',
+      planFeatureProHotel: 'Ưu đãi khách sạn độc quyền',
+      planFeatureVipCoupon: 'Mã giảm giá độc quyền',
+      planFeatureVipHotel: 'Ưu đãi khách sạn độc quyền',
+      planFeatureVipPdf: 'Lưu lịch trình PDF',
+      planFeatureVipExpert: 'Hỗ trợ chuyên gia',
+      planFeatureVipAttraction: 'Ưu đãi vé tham quan độc quyền',
+      planFeatureVipDriver: 'Hỗ trợ thuê xe an toàn sau tiệc',
+      planFeatureVipPhoto: 'Chỉnh sửa ảnh cao cấp độc quyền',
+      supportHint: 'Cấu hình checkout qua VITE_CHECKOUT_PRO_URL và VITE_CHECKOUT_VIP_URL (hoặc VITE_CHECKOUT_ULTRA_URL).'
     },
     en: {
-      title: 'Upgrade Plan',
-      subtitle: 'Get more questions and premium utilities',
-      questionsLeft: 'questions left',
-      currentPlan: 'Current Plan',
-      upgradeNow: 'Upgrade Now',
+      title: 'Upgrade Ola Plans',
+      subtitle: 'Scale your travel experience and unlock premium perks.',
+      highlights: ['Complete itinerary', 'Exclusive hotel offers', 'Exclusive discount codes', 'Expert support'],
+      currentPlan: 'Current plan',
       processing: 'Processing...',
-      free: 'Free',
-      basic: 'Basic',
-      pro: 'Pro',
-      ultra: 'Ultra',
-      autoPayNotice: 'Opening checkout...',
-      autoPayHint: 'If checkout did not open, use support email below.',
-      checkoutMissing: 'No direct checkout URL configured for this tier.',
-      contactSupport: 'Contact via Email',
-      payoutHint: 'Configure checkout links via VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL / VITE_CHECKOUT_ULTRA_URL.'
+      startNow: 'Start',
+      contactSupport: 'Contact Support Email',
+      checkoutMissing: 'No checkout URL configured for this plan.',
+      freeActivated: 'Switched to free 3-day plan.',
+      bestValue: 'BEST VALUE',
+      freeName: 'Free Plan',
+      proName: 'Ola Pro',
+      vipName: 'Ola Vip',
+      trialOptionTitle: 'Start with 3-day free trial',
+      trialOptionDesc: 'Itinerary limit is 3 days. Requests from 5 days will trigger upgrade notice.',
+      yearlyOptionTitle: 'Yearly billing',
+      monthlyOptionTitle: 'Monthly billing',
+      perMonth: '/month',
+      planFeatureProQuestion: 'Up to 100 questions/month (after 100, prompt upgrade to Ola Vip)',
+      planFeatureProUnlimited: 'Unlimited itinerary planning',
+      planFeatureProCoupon: 'Exclusive discount codes',
+      planFeatureProHotel: 'Exclusive hotel offers',
+      planFeatureVipCoupon: 'Exclusive discount codes',
+      planFeatureVipHotel: 'Exclusive hotel offers',
+      planFeatureVipPdf: 'Export itinerary to PDF',
+      planFeatureVipExpert: 'Expert support',
+      planFeatureVipAttraction: 'Exclusive attraction ticket offers',
+      planFeatureVipDriver: 'Safe self-drive support after parties',
+      planFeatureVipPhoto: 'Exclusive premium photo retouching',
+      supportHint: 'Configure checkout via VITE_CHECKOUT_PRO_URL and VITE_CHECKOUT_VIP_URL (or VITE_CHECKOUT_ULTRA_URL).'
     },
     ja: {
-      title: 'プランをアップグレード',
-      subtitle: '質問枠と機能を増やす',
-      questionsLeft: '残り質問数',
+      title: 'Olaプランをアップグレード',
+      subtitle: '体験を強化し、限定特典を解放します。',
+      highlights: ['旅程を完全作成', '限定ホテル特典', '限定クーポンコード', '専門家サポート'],
       currentPlan: '現在のプラン',
-      upgradeNow: '今すぐアップグレード',
       processing: '処理中...',
-      free: '無料',
-      basic: 'ベーシック',
-      pro: 'プロ',
-      ultra: 'プレミアム',
-      autoPayNotice: '決済ページを開いています...',
-      autoPayHint: '決済ページが開かない場合は、下のサポートメールをご利用ください。',
+      startNow: '開始',
+      contactSupport: 'サポートへメール',
       checkoutMissing: 'このプランの決済URLが未設定です。',
-      contactSupport: 'メールで問い合わせ',
-      payoutHint: 'VITE_CHECKOUT_BASIC_URL / VITE_CHECKOUT_PRO_URL / VITE_CHECKOUT_ULTRA_URL を設定してください。'
+      freeActivated: '無料3日プランに切り替えました。',
+      bestValue: '最もお得',
+      freeName: '無料プラン',
+      proName: 'Ola Pro',
+      vipName: 'Ola Vip',
+      trialOptionTitle: '3日間の無料トライアル',
+      trialOptionDesc: '旅程は最大3日。5日以上の依頼ではアップグレードを案内します。',
+      yearlyOptionTitle: '年払い',
+      monthlyOptionTitle: '月払い',
+      perMonth: '/月',
+      planFeatureProQuestion: '月100件まで（100件超はOla Vipへのアップグレード案内）',
+      planFeatureProUnlimited: '旅程作成は無制限',
+      planFeatureProCoupon: '限定クーポンコード',
+      planFeatureProHotel: '限定ホテル特典',
+      planFeatureVipCoupon: '限定クーポンコード',
+      planFeatureVipHotel: '限定ホテル特典',
+      planFeatureVipPdf: 'PDF保存',
+      planFeatureVipExpert: '専門家サポート',
+      planFeatureVipAttraction: '限定チケット特典',
+      planFeatureVipDriver: '飲酒後の安全運転サポート',
+      planFeatureVipPhoto: '限定プレミアム写真補正',
+      supportHint: 'VITE_CHECKOUT_PRO_URL と VITE_CHECKOUT_VIP_URL（または VITE_CHECKOUT_ULTRA_URL）を設定してください。'
     }
   } as const;
 
   const copy = copyByLang[language];
-  const buildBasicCheckout = (import.meta as any).env?.VITE_CHECKOUT_BASIC_URL || '';
-  const buildProCheckout = (import.meta as any).env?.VITE_CHECKOUT_PRO_URL || '';
-  const buildUltraCheckout = (import.meta as any).env?.VITE_CHECKOUT_ULTRA_URL || '';
-  const [runtimeCheckout, setRuntimeCheckout] = useState<{ basic: string; pro: string; ultra: string }>({
-    basic: '',
+  const buildProCheckout = (import.meta as any).env?.VITE_CHECKOUT_PRO_URL || (import.meta as any).env?.VITE_CHECKOUT_BASIC_URL || '';
+  const buildVipCheckout = (import.meta as any).env?.VITE_CHECKOUT_VIP_URL || (import.meta as any).env?.VITE_CHECKOUT_ULTRA_URL || '';
+  const [runtimeCheckout, setRuntimeCheckout] = useState<{ pro: string; vip: string }>({
     pro: '',
-    ultra: ''
+    vip: ''
   });
-  const [processingPlanId, setProcessingPlanId] = useState<UpgradePlanId | null>(null);
-  const [showPayNotice, setShowPayNotice] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<UpgradePlanId>('free');
+  const [selectedBilling, setSelectedBilling] = useState<UpgradeBillingCycle>('trial');
   const [currentPlan, setCurrentPlan] = useState<UpgradePlanId>('free');
 
-  const checkoutByPlan = {
-    basic: runtimeCheckout.basic || buildBasicCheckout,
-    pro: runtimeCheckout.pro || buildProCheckout,
-    ultra: runtimeCheckout.ultra || buildUltraCheckout || runtimeCheckout.pro || buildProCheckout
-  };
+  const normalizePlan = useCallback((raw: string | null): UpgradePlanId => {
+    if (raw === 'vip' || raw === 'ultra') return 'vip';
+    if (raw === 'pro' || raw === 'basic') return 'pro';
+    return 'free';
+  }, []);
 
   useEffect(() => {
-    const savedPlan = typeof window !== 'undefined' ? window.localStorage.getItem('olachill_plan') : null;
-    if (savedPlan === 'free' || savedPlan === 'basic' || savedPlan === 'pro' || savedPlan === 'ultra') {
-      setCurrentPlan(savedPlan);
-    }
-  }, []);
+    if (typeof window === 'undefined') return;
+    const savedPlan = normalizePlan(window.localStorage.getItem('olachill_plan'));
+    setCurrentPlan(savedPlan);
+    setSelectedPlan(savedPlan);
+    setSelectedBilling(savedPlan === 'free' ? 'trial' : 'yearly');
+  }, [normalizePlan]);
 
   useEffect(() => {
     let active = true;
@@ -2305,19 +2437,76 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
       .then((json) => {
         if (!active || !json) return;
         setRuntimeCheckout({
-          basic: typeof json?.checkoutBasicUrl === 'string' ? json.checkoutBasicUrl : '',
-          pro: typeof json?.checkoutProUrl === 'string' ? json.checkoutProUrl : '',
-          ultra: typeof json?.checkoutUltraUrl === 'string' ? json.checkoutUltraUrl : ''
+          pro: typeof json?.checkoutProUrl === 'string' ? json.checkoutProUrl : (typeof json?.checkoutBasicUrl === 'string' ? json.checkoutBasicUrl : ''),
+          vip: typeof json?.checkoutVipUrl === 'string'
+            ? json.checkoutVipUrl
+            : (typeof json?.checkoutUltraUrl === 'string' ? json.checkoutUltraUrl : '')
         });
       })
       .catch(() => {
-        // Ignore fetch errors and fallback to build-time env.
+        // Ignore fetch errors and keep build-time env fallback.
       });
 
     return () => {
       active = false;
     };
   }, []);
+
+  const plans = {
+    free: {
+      id: 'free' as const,
+      name: copy.freeName,
+      monthly: '0$',
+      yearly: '0$',
+      features: [copy.trialOptionDesc]
+    },
+    pro: {
+      id: 'pro' as const,
+      name: copy.proName,
+      monthly: '9.9$',
+      yearly: '4.9$',
+      features: [
+        copy.planFeatureProUnlimited,
+        copy.planFeatureProCoupon,
+        copy.planFeatureProHotel,
+        copy.planFeatureProQuestion
+      ]
+    },
+    vip: {
+      id: 'vip' as const,
+      name: copy.vipName,
+      monthly: '9.9$',
+      yearly: '8.9$',
+      features: [
+        copy.planFeatureVipCoupon,
+        copy.planFeatureVipHotel,
+        copy.planFeatureVipPdf,
+        copy.planFeatureVipExpert,
+        copy.planFeatureVipAttraction,
+        copy.planFeatureVipDriver,
+        copy.planFeatureVipPhoto
+      ]
+    }
+  };
+
+  const resolveCheckoutUrl = (planId: UpgradePlanId, billing: UpgradeBillingCycle) => {
+    if (planId === 'free') return '';
+    const base = planId === 'pro'
+      ? (runtimeCheckout.pro || buildProCheckout)
+      : (runtimeCheckout.vip || buildVipCheckout || runtimeCheckout.pro || buildProCheckout);
+    if (!base) return '';
+
+    try {
+      const url = new URL(base, window.location.origin);
+      if (billing !== 'trial') {
+        url.searchParams.set('billing', billing);
+      }
+      url.searchParams.set('plan', planId);
+      return url.toString();
+    } catch {
+      return base;
+    }
+  };
 
   const openCheckout = (url: string) => {
     if (!url) return false;
@@ -2350,30 +2539,42 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
     window.location.href = mailto;
   };
 
-  const plans: Array<{ id: UpgradePlanId; name: string; price: string; limit: number; features?: string[] }> = [
-    { id: 'free', name: copy.free, price: '0 ¥', limit: 10 },
-    { id: 'basic', name: copy.basic, price: '500 ¥', limit: 50 },
-    { id: 'pro', name: copy.pro, price: '1000 ¥', limit: 100 },
-    { id: 'ultra', name: copy.ultra, price: '2000 ¥', limit: 200, features: ['GPS nearby search'] }
-  ];
+  const handleChoosePlan = (planId: UpgradePlanId) => {
+    setSelectedPlan(planId);
+    setSelectedBilling(planId === 'free' ? 'trial' : 'yearly');
+  };
 
-  const handleUpgrade = (planId: UpgradePlanId) => {
-    if (planId === 'free' || processingPlanId) return;
-    setShowPayNotice(false);
-    setProcessingPlanId(planId);
+  const handleStart = () => {
+    if (processing) return;
 
-    const checkoutUrl = checkoutByPlan[planId as keyof typeof checkoutByPlan];
-    const opened = openCheckout(checkoutUrl);
-    if (!opened) {
-      setProcessingPlanId(null);
+    if (selectedPlan === 'free') {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('olachill_plan', 'free');
+      }
+      setCurrentPlan('free');
+      alert(copy.freeActivated);
+      onClose();
+      return;
+    }
+
+    const checkoutUrl = resolveCheckoutUrl(selectedPlan, selectedBilling);
+    if (!checkoutUrl) {
       alert(copy.checkoutMissing);
       return;
     }
 
-    setShowPayNotice(true);
-    setTimeout(() => {
-      setProcessingPlanId(null);
-    }, 1200);
+    setProcessing(true);
+    const opened = openCheckout(checkoutUrl);
+    if (!opened) {
+      setProcessing(false);
+      alert(copy.checkoutMissing);
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('olachill_plan', selectedPlan);
+    }
+    setCurrentPlan(selectedPlan);
+    setTimeout(() => setProcessing(false), 1200);
   };
 
   return (
@@ -2389,7 +2590,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-5 sm:p-8 shadow-2xl"
+        className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-5 sm:p-8 shadow-2xl"
       >
         <button
           onClick={onClose}
@@ -2399,66 +2600,126 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         </button>
 
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-300 flex items-center justify-center">
             <Crown size={20} />
           </div>
-          <h3 className="text-2xl font-serif dark:text-white">{copy.title}</h3>
+          <h3 className="text-2xl font-black tracking-tight dark:text-white">{copy.title}</h3>
         </div>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mb-5">{copy.subtitle}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">{copy.subtitle}</p>
 
-        {showPayNotice && (
-          <div className="mb-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4">
-            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{copy.autoPayNotice}</p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">{copy.autoPayHint}</p>
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-7">
+          {copy.highlights.map((item) => (
+            <div
+              key={item}
+              className="rounded-2xl border border-violet-100 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-900/10 p-4 flex items-center gap-3"
+            >
+              <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <CheckCircle2 size={16} />
+              </span>
+              <span className="font-bold text-stone-800 dark:text-stone-100">{item}</span>
+            </div>
+          ))}
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {plans.map((plan) => {
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          {Object.values(plans).map((plan) => {
+            const isSelected = selectedPlan === plan.id;
             const isCurrent = currentPlan === plan.id;
-            const isProcessing = processingPlanId === plan.id;
-            const disabled = isCurrent || processingPlanId !== null;
             return (
-              <div
+              <button
                 key={plan.id}
-                className={`rounded-2xl border p-5 transition-colors ${
-                  isCurrent
-                    ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10'
-                    : 'border-stone-200 dark:border-stone-700 bg-stone-50/40 dark:bg-stone-800/40'
+                onClick={() => handleChoosePlan(plan.id)}
+                className={`rounded-2xl border p-4 text-left transition-colors ${
+                  isSelected
+                    ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
+                    : 'border-stone-200 dark:border-stone-700 hover:border-violet-300 dark:hover:border-violet-600'
                 }`}
               >
-                <h4 className="text-lg font-bold dark:text-white">{plan.name}</h4>
-                <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2 mb-4">{plan.price}</p>
-                <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-300 mb-5 min-h-20">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
-                    <span>{plan.limit} {copy.questionsLeft}</span>
-                  </li>
-                  {(plan.features || []).map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => handleUpgrade(plan.id)}
-                  disabled={disabled}
-                  className={`w-full py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
-                    isCurrent
-                      ? 'bg-stone-200 dark:bg-stone-800 text-stone-500 cursor-default'
-                      : 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 disabled:opacity-80 disabled:cursor-not-allowed'
-                  }`}
-                >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : isCurrent ? <CheckCircle2 size={14} /> : <ArrowRight size={14} />}
-                  <span>{isCurrent ? copy.currentPlan : isProcessing ? copy.processing : copy.upgradeNow}</span>
-                </button>
-              </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-lg font-black dark:text-white">{plan.name}</p>
+                  {isCurrent ? (
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-black uppercase tracking-wider">
+                      {copy.currentPlan}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                  {plan.id === 'free' ? copy.trialOptionTitle : `${plan.yearly} ${copy.perMonth} • ${plan.monthly} ${copy.perMonth}`}
+                </p>
+              </button>
             );
           })}
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {selectedPlan === 'free' ? (
+          <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 p-5 mb-6">
+            <label className="flex items-start gap-3">
+              <input type="radio" checked readOnly className="mt-1 w-5 h-5 accent-violet-600" />
+              <span>
+                <span className="block text-lg font-black dark:text-white">{copy.trialOptionTitle}</span>
+                <span className="block text-sm text-stone-500 dark:text-stone-400 mt-1">{copy.trialOptionDesc}</span>
+              </span>
+            </label>
+          </div>
+        ) : (
+          <div className="space-y-3 mb-6">
+            {(['yearly', 'monthly'] as UpgradeBillingCycle[]).map((cycle) => {
+              const isYearly = cycle === 'yearly';
+              const active = selectedBilling === cycle;
+              const plan = plans[selectedPlan];
+              return (
+                <button
+                  key={cycle}
+                  onClick={() => setSelectedBilling(cycle)}
+                  className={`w-full rounded-2xl border p-4 text-left transition-colors relative ${
+                    active
+                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
+                      : 'border-stone-200 dark:border-stone-700 hover:border-violet-300 dark:hover:border-violet-600'
+                  }`}
+                >
+                  {isYearly ? (
+                    <span className="absolute top-3 right-4 text-[11px] px-2 py-1 rounded-full bg-violet-600 text-white font-black">
+                      {copy.bestValue}
+                    </span>
+                  ) : null}
+                  <div className="flex items-start gap-3">
+                    <input type="radio" checked={active} readOnly className="mt-1 w-5 h-5 accent-violet-600" />
+                    <div className="flex-1">
+                      <p className="text-xl font-black dark:text-white">
+                        {isYearly ? copy.yearlyOptionTitle : copy.monthlyOptionTitle}
+                      </p>
+                      <p className="text-sm text-stone-500 dark:text-stone-400">
+                        {isYearly ? plan.yearly : plan.monthly} {copy.perMonth}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-stone-100 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 p-4 mb-6">
+          <ul className="space-y-2 text-sm text-stone-600 dark:text-stone-300">
+            {plans[selectedPlan].features.map((feature) => (
+              <li key={feature} className="flex items-start gap-2">
+                <CheckCircle2 size={14} className="mt-0.5 text-emerald-500" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          onClick={handleStart}
+          disabled={processing}
+          className="w-full py-4 rounded-2xl text-lg font-black bg-violet-900 text-white hover:bg-violet-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight size={18} />}
+          {processing ? copy.processing : copy.startNow}
+        </button>
+
+        <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <button
             onClick={openSupportEmail}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
@@ -2466,7 +2727,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
             <ExternalLink size={14} />
             <span>{copy.contactSupport}</span>
           </button>
-          <p className="text-xs text-stone-400 dark:text-stone-500">{copy.payoutHint}</p>
+          <p className="text-xs text-stone-400 dark:text-stone-500">{copy.supportHint}</p>
         </div>
       </motion.div>
     </div>
@@ -2871,6 +3132,12 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
+  const [showDesktopUserMenu, setShowDesktopUserMenu] = useState(false);
+  const [showMobileUserMenu, setShowMobileUserMenu] = useState(false);
+  const [showMobileSettingPanel, setShowMobileSettingPanel] = useState(false);
+  const [currency, setCurrency] = useState<'VND' | 'USD' | 'JPY'>('VND');
+  const [temperatureUnit, setTemperatureUnit] = useState<'C' | 'F'>('C');
 
   const t = translations[language];
   const languageOptions: { code: Language; label: string }[] = [
@@ -2883,6 +3150,23 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const esimPaymentLabel = language === 'vi' ? 'Thanh toán eSIM' : language === 'ja' ? 'eSIM決済' : 'eSIM Payment';
   const couponDealsLabel = language === 'vi' ? 'Mã giảm giá' : language === 'ja' ? 'クーポン' : 'Coupon Deals';
   const mobileLoginLabel = language === 'vi' ? 'Đăng nhập' : language === 'ja' ? 'ログイン' : 'Login';
+  const settingsLabel = language === 'vi' ? 'Cài đặt' : language === 'ja' ? '設定' : 'Settings';
+  const manageSubscriptionLabel = language === 'vi' ? 'Quản lý gói' : language === 'ja' ? 'プラン管理' : 'Manage Subscription';
+  const myTripsLabel = language === 'vi' ? 'Chuyến đi của tôi' : language === 'ja' ? 'マイトリップ' : 'My Trips';
+  const currencyLabel = language === 'vi' ? `Tiền tệ (${currency})` : language === 'ja' ? `通貨 (${currency})` : `Currency (${currency})`;
+  const languageLabel = language === 'vi' ? 'Ngôn ngữ' : language === 'ja' ? '言語' : 'Language';
+  const temperatureLabel = language === 'vi' ? `Nhiệt độ (°${temperatureUnit})` : language === 'ja' ? `温度 (°${temperatureUnit})` : `Temperature (°${temperatureUnit})`;
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'JPY' ? '¥' : '₫';
+  const languageBadge = language === 'vi' ? '🇻🇳' : language === 'ja' ? '🇯🇵' : '🇺🇸';
+  const cycleCurrency = () => {
+    setCurrency((prev) => (prev === 'VND' ? 'USD' : prev === 'USD' ? 'JPY' : 'VND'));
+  };
+  const cycleLanguage = () => {
+    setLanguage((prev) => (prev === 'vi' ? 'en' : prev === 'en' ? 'ja' : 'vi'));
+  };
+  const cycleTemperature = () => {
+    setTemperatureUnit((prev) => (prev === 'C' ? 'F' : 'C'));
+  };
   const sessionsStorageKey = 'olachill_sessions';
   const legacySessionsStorageKey = 'japan_ai_sessions';
   const aiProcessingLabel = language === 'vi' ? `${t.appName} đang xử lý...` : language === 'ja' ? `${t.appName} が処理中...` : `${t.appName} is processing...`;
@@ -2914,12 +3198,17 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility && topic.utility !== 'coupons');
 
   const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'esim' | 'coupons'>(null);
+  const isUtilityFullscreen = activeUtility === 'train' || activeUtility === 'tickets';
+  const isUtilityWideLayout = isUtilityFullscreen || activeUtility === 'esim';
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentSubscriptionPlan, setCurrentSubscriptionPlan] = useState<UpgradePlanId>('free');
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loginPending, setLoginPending] = useState(false);
   const [userPrefs, setUserPrefs] = useState<any>(null);
   const loginAlertShownRef = useRef(false);
+  const planStorageKey = 'olachill_plan';
+  const questionUsageStorageKey = 'olachill_question_usage';
 
   const getLoginErrorMessage = (error: any) => {
     const code = String(error?.code || '');
@@ -2987,7 +3276,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         loginAlertShownRef.current = true;
         alert(getLoginErrorMessage(error));
       });
-  }, [language]);
+  // Run once on mount to finalize any pending redirect auth result.
+  // Re-running on language switch can cause duplicate alert noise.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auth Listener
   useEffect(() => {
@@ -3084,11 +3376,25 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     }
   };
 
-  const scrollToSectionFromMenu = (id: string) => {
-    setShowMobileMenu(false);
+  const scrollToSection = (id: string) => {
     window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 140);
+  };
+
+  const scrollToSectionFromMenu = (id: string) => {
+    setShowMobileMenu(false);
+    scrollToSection(id);
+  };
+
+  const scrollToSectionFromDesktopMenu = (id: string) => {
+    setShowDesktopUserMenu(false);
+    scrollToSection(id);
+  };
+
+  const scrollToSectionFromMobileUserMenu = (id: string) => {
+    setShowMobileUserMenu(false);
+    scrollToSection(id);
   };
 
   useEffect(() => {
@@ -3112,6 +3418,81 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
+
+  const normalizePlan = useCallback((raw: string | null): UpgradePlanId => {
+    if (raw === 'vip' || raw === 'ultra') return 'vip';
+    if (raw === 'pro' || raw === 'basic') return 'pro';
+    return 'free';
+  }, []);
+
+  const getLocalDateKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDailyQuestionUsage = () => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const raw = window.localStorage.getItem(questionUsageStorageKey);
+      if (!raw) return 0;
+      const parsed = JSON.parse(raw) as { date?: string; count?: number };
+      if (parsed?.date !== getLocalDateKey()) return 0;
+      const count = Number(parsed?.count || 0);
+      return Number.isFinite(count) && count > 0 ? count : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const increaseDailyQuestionUsage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const nextCount = getDailyQuestionUsage() + 1;
+      window.localStorage.setItem(questionUsageStorageKey, JSON.stringify({
+        date: getLocalDateKey(),
+        count: nextCount
+      }));
+    } catch {
+      // Keep app functional even when storage is blocked.
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncPlan = () => {
+      setCurrentSubscriptionPlan(normalizePlan(window.localStorage.getItem(planStorageKey)));
+    };
+    syncPlan();
+    window.addEventListener('storage', syncPlan);
+    window.addEventListener('focus', syncPlan);
+    return () => {
+      window.removeEventListener('storage', syncPlan);
+      window.removeEventListener('focus', syncPlan);
+    };
+  }, [normalizePlan]);
+
+  const detectRequestedDays = (text: string): number => {
+    const normalized = String(text || '');
+    const match = normalized.match(/(\d+)\s*(ngày|day|days|日)/i);
+    if (!match) return 0;
+    const value = Number(match[1] || 0);
+    return Number.isFinite(value) ? value : 0;
+  };
+
+  const freePlanBlockedMessage = language === 'vi'
+    ? 'Gói miễn phí chỉ hỗ trợ lịch trình tối đa 3 ngày. Với yêu cầu từ 5 ngày, vui lòng nâng cấp Ola Pro hoặc Ola Vip.'
+    : language === 'ja'
+      ? '無料プランは最大3日までです。5日以上の旅程は Ola Pro または Ola Vip にアップグレードしてください。'
+      : 'Free plan supports up to 3-day itineraries. For 5+ day requests, please upgrade to Ola Pro or Ola Vip.';
+
+  const proPlanLimitMessage = language === 'vi'
+    ? 'Bạn đã vượt 100 câu hỏi trong gói Ola Pro. Vui lòng nâng cấp Ola Vip để tiếp tục.'
+    : language === 'ja'
+      ? 'Ola Pro の100質問上限に達しました。続行するには Ola Vip へアップグレードしてください。'
+      : 'You reached 100-question limit on Ola Pro. Please upgrade to Ola Vip to continue.';
 
   const generatePlan = async (userPrompt: string) => {
     if (!userPrompt.trim() || loading) return;
@@ -3146,6 +3527,40 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       setLoading(false);
       return;
     }
+
+    const requestedDays = detectRequestedDays(userPrompt);
+    if (currentSubscriptionPlan === 'free' && requestedDays >= 5) {
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== loadingMessage.id);
+        return [...filtered, {
+          id: Date.now().toString(),
+          type: 'error',
+          content: freePlanBlockedMessage,
+          timestamp: new Date()
+        }];
+      });
+      setLoading(false);
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    const dailyUsage = getDailyQuestionUsage();
+    if (currentSubscriptionPlan === 'pro' && dailyUsage >= 100) {
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== loadingMessage.id);
+        return [...filtered, {
+          id: Date.now().toString(),
+          type: 'error',
+          content: proPlanLimitMessage,
+          timestamp: new Date()
+        }];
+      });
+      setLoading(false);
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    increaseDailyQuestionUsage();
 
     try {
       // Build history for AI
@@ -3250,7 +3665,13 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       <nav className="fixed top-0 left-0 right-0 h-20 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md z-50 border-b border-stone-100 dark:border-stone-800 px-4 md:px-6 flex items-center justify-between overflow-visible">
         <div className="flex items-center gap-2 md:gap-3">
           <button
-            onClick={() => setShowMobileMenu(true)}
+            onClick={() => {
+              setShowMobileUserMenu(true);
+              setShowMobileSettingPanel(false);
+              setShowMobileMenu(false);
+              setShowLanguageMenu(false);
+              setShowDesktopUserMenu(false);
+            }}
             className="md:hidden p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors"
             title="Menu"
           >
@@ -3312,34 +3733,30 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             >
               <Plus size={20} />
             </button>
-            {authLoading ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <Loader2 className="animate-spin text-stone-400" size={18} />
-              </div>
-            ) : user ? (
-              <button
-                onClick={logout}
-                className="w-10 h-10 rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden"
-                title={t.logout}
-              >
+            <button
+              onClick={() => {
+                setShowMobileUserMenu(true);
+                setShowLanguageMenu(false);
+                setShowDesktopUserMenu(false);
+                setShowMobileMenu(false);
+              }}
+              className="h-10 px-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white/90 dark:bg-stone-900/90 flex items-center gap-1.5"
+              title={settingsLabel}
+            >
+              {authLoading ? (
+                <Loader2 className="animate-spin text-stone-400" size={16} />
+              ) : user ? (
                 <img
                   src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`}
                   alt={user.displayName || 'User'}
-                  className="w-full h-full object-cover"
+                  className="w-6 h-6 rounded-full border border-stone-200 dark:border-stone-700 object-cover"
                   referrerPolicy="no-referrer"
                 />
-              </button>
-            ) : (
-              <button
-                onClick={handleLogin}
-                disabled={loginPending}
-                className="h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center gap-1.5 px-3 shadow-lg shadow-emerald-600/20 disabled:opacity-70 disabled:cursor-not-allowed"
-                title={t.login}
-              >
-                {loginPending ? <Loader2 className="animate-spin" size={18} /> : <User size={18} />}
-                <span className="text-[11px] font-bold leading-none">{mobileLoginLabel}</span>
-              </button>
-            )}
+              ) : (
+                <User size={16} className="text-stone-500 dark:text-stone-300" />
+              )}
+              <ChevronDown size={14} className="text-stone-400" />
+            </button>
           </div>
 
           <div className="hidden md:flex items-center gap-2">
@@ -3382,7 +3799,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
 
             <div className="relative">
               <button
-                onClick={() => setShowLanguageMenu((prev) => !prev)}
+                onClick={() => {
+                  setShowLanguageMenu((prev) => !prev);
+                  setShowDesktopUserMenu(false);
+                }}
                 className="p-2.5 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 rounded-xl transition-colors font-bold text-xs uppercase border border-stone-200 dark:border-stone-800"
                 title="Language"
               >
@@ -3427,188 +3847,400 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
 
-            {authLoading ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <Loader2 className="animate-spin text-stone-400" size={20} />
-              </div>
-            ) : user ? (
-              <div className="flex items-center gap-3 pl-2 border-l border-stone-100 dark:border-stone-800">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">5 lượt/ngày</span>
-                  <button 
-                    onClick={logout}
-                    className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors uppercase tracking-wider"
-                  >
-                    {t.logout}
-                  </button>
-                </div>
-                <img 
-                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`} 
-                  alt={user.displayName || 'User'} 
-                  className="w-8 h-8 rounded-full border border-stone-200 dark:border-stone-700"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            ) : (
-              <button 
-                onClick={handleLogin}
-                disabled={loginPending}
-                className="ml-1 sm:ml-2 px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 sm:gap-2 shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
+            <div className="relative pl-2 border-l border-stone-100 dark:border-stone-800">
+              <button
+                onClick={() => {
+                  setShowDesktopUserMenu((prev) => !prev);
+                  setShowLanguageMenu(false);
+                }}
+                className="h-10 pl-2 pr-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white/90 dark:bg-stone-900/90 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors flex items-center gap-2"
               >
-                {loginPending ? <Loader2 className="animate-spin" size={18} /> : <User size={18} />}
-                <span className="hidden sm:inline">{loginPending ? (language === 'vi' ? 'Đang đăng nhập...' : language === 'ja' ? 'ログイン中...' : 'Signing in...') : t.login}</span>
+                {authLoading ? (
+                  <div className="w-7 h-7 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
+                    <Loader2 className="animate-spin text-stone-400" size={14} />
+                  </div>
+                ) : user ? (
+                  <img
+                    src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`}
+                    alt={user.displayName || 'User'}
+                    className="w-7 h-7 rounded-full border border-stone-200 dark:border-stone-700"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center">
+                    <User size={14} className="text-stone-500 dark:text-stone-300" />
+                  </div>
+                )}
+                <ChevronDown size={15} className={`text-stone-400 transition-transform ${showDesktopUserMenu ? 'rotate-180' : ''}`} />
               </button>
-            )}
+
+              <AnimatePresence>
+                {showDesktopUserMenu && (
+                  <>
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setShowDesktopUserMenu(false)}
+                      className="fixed inset-0 z-[58] cursor-default"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                      className="absolute right-0 mt-2 w-[320px] bg-white/95 dark:bg-stone-900/95 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl backdrop-blur-md z-[60] overflow-hidden"
+                    >
+                      <div className="px-4 pt-3 pb-2 border-b border-stone-100 dark:border-stone-800">
+                        <div className="inline-flex items-center rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden bg-white dark:bg-stone-900">
+                          <button
+                            onClick={cycleCurrency}
+                            className="px-3 py-1.5 text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                            title={currencyLabel}
+                          >
+                            {currencySymbol}
+                          </button>
+                          <button
+                            onClick={cycleLanguage}
+                            className="px-3 py-1.5 text-sm font-bold text-stone-700 dark:text-stone-200 border-l border-r border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                            title={languageLabel}
+                          >
+                            {languageBadge}
+                          </button>
+                          <button
+                            onClick={cycleTemperature}
+                            className="px-3 py-1.5 text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                            title={temperatureLabel}
+                          >
+                            °{temperatureUnit}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-3 border-b border-stone-100 dark:border-stone-800">
+                        <p className="text-xs uppercase tracking-[0.22em] font-black text-stone-400 dark:text-stone-500">Olachill</p>
+                        <p className="text-sm font-bold text-stone-900 dark:text-white mt-1 truncate">
+                          {user?.displayName || user?.email || 'Guest'}
+                        </p>
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">5 lượt/ngày</p>
+                      </div>
+
+                      <div className="p-2 space-y-1">
+                        {authLoading ? (
+                          <button
+                            disabled
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-stone-400"
+                          >
+                            <Loader2 size={16} className="animate-spin" />
+                            ...
+                          </button>
+                        ) : user ? (
+                          <button
+                            onClick={() => {
+                              setShowDesktopUserMenu(false);
+                              void logout();
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                          >
+                            <LogOut size={18} className="text-stone-500 dark:text-stone-400" />
+                            {t.logout}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setShowDesktopUserMenu(false);
+                              void handleLogin();
+                            }}
+                            disabled={loginPending}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                          >
+                            {loginPending ? <Loader2 size={18} className="animate-spin text-stone-500 dark:text-stone-400" /> : <LogIn size={18} className="text-stone-500 dark:text-stone-400" />}
+                            {loginPending ? (language === 'vi' ? 'Đang đăng nhập...' : language === 'ja' ? 'ログイン中...' : 'Signing in...') : t.login}
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setShowDesktopUserMenu(false);
+                            clearChat();
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <Plus size={18} className="text-stone-500 dark:text-stone-400" />
+                          {t.newChat}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowDesktopUserMenu(false);
+                            setShowUpgradeModal(true);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <Crown size={18} className="text-stone-500 dark:text-stone-400" />
+                          {manageSubscriptionLabel}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowDesktopUserMenu(false);
+                            setShowLanguageMenu(true);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <Settings size={18} className="text-stone-500 dark:text-stone-400" />
+                          {settingsLabel}
+                        </button>
+                      </div>
+
+                      <div className="mx-2 border-t border-stone-100 dark:border-stone-800" />
+
+                      <div className="p-2 space-y-1">
+                        <button
+                          onClick={() => scrollToSectionFromDesktopMenu('footer-about')}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <Info size={18} className="text-stone-500 dark:text-stone-400" />
+                          {aboutLabel}
+                        </button>
+
+                        <button
+                          onClick={() => scrollToSectionFromDesktopMenu('footer-support')}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <MessageSquare size={18} className="text-stone-500 dark:text-stone-400" />
+                          {t.contact}
+                        </button>
+
+                        <button
+                          onClick={() => scrollToSectionFromDesktopMenu('footer-support')}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        >
+                          <FileText size={18} className="text-stone-500 dark:text-stone-400" />
+                          {t.terms}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Sidebar Menu */}
+      {/* Mobile Search Overlay */}
       <AnimatePresence>
-        {showMobileMenu && (
+        {showMobileUserMenu && (
           <>
-            <motion.div
+            <motion.button
+              type="button"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowMobileMenu(false)}
-              className="fixed inset-0 bg-black/25 backdrop-blur-[2px] z-[55] md:hidden"
+              onClick={() => {
+                setShowMobileUserMenu(false);
+                setShowMobileSettingPanel(false);
+              }}
+              className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[58] md:hidden cursor-default"
             />
-            <motion.aside
-              initial={{ x: -360, opacity: 0.9 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -360, opacity: 0.9 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed top-0 left-0 bottom-0 w-[92vw] max-w-[360px] bg-white dark:bg-stone-900 z-[60] md:hidden border-r border-stone-200 dark:border-stone-800 flex flex-col"
+            <motion.div
+              initial={{ y: '100%', opacity: 0.95 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+              className="fixed left-0 right-0 bottom-0 max-h-[82vh] bg-white dark:bg-stone-900 rounded-t-[28px] z-[60] md:hidden border-t border-stone-200 dark:border-stone-800 shadow-2xl overflow-y-auto"
             >
-              <div className="p-6 border-b border-stone-100 dark:border-stone-800">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-100 to-lime-100 dark:from-stone-800 dark:to-stone-700 border border-emerald-100 dark:border-stone-700 p-2 shadow-sm">
-                      <OlachillLogo className="w-full h-full" />
-                    </div>
-                    <div className="font-serif italic text-4xl leading-none text-stone-900 dark:text-white">{t.appName}</div>
-                  </div>
+              <div className="py-3 flex justify-center">
+                <div className="w-14 h-1.5 rounded-full bg-stone-200 dark:bg-stone-700" />
+              </div>
+
+              <div className="px-5 pb-3 flex justify-end">
+                <div className="inline-flex items-center rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden bg-white dark:bg-stone-900">
                   <button
-                    onClick={() => setShowMobileMenu(false)}
-                    className="p-2 rounded-xl text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                    onClick={cycleCurrency}
+                    className="px-3 py-1.5 text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                    title={currencyLabel}
                   >
-                    <X size={26} />
+                    {currencySymbol}
+                  </button>
+                  <button
+                    onClick={cycleLanguage}
+                    className="px-3 py-1.5 text-sm font-bold text-stone-700 dark:text-stone-200 border-l border-r border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                    title={languageLabel}
+                  >
+                    {languageBadge}
+                  </button>
+                  <button
+                    onClick={cycleTemperature}
+                    className="px-3 py-1.5 text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                    title={temperatureLabel}
+                  >
+                    °{temperatureUnit}
                   </button>
                 </div>
               </div>
 
-              <div className="px-6 py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
-                <span className="text-sm font-black tracking-wide text-stone-400 dark:text-stone-500">{mobileMenuVersionLabel}</span>
-                <button
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    window.open('https://olachill.com', '_blank', 'noopener,noreferrer');
-                  }}
-                  className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline"
-                >
-                  Visit olachill.com
-                  <ExternalLink size={16} />
-                </button>
-              </div>
-
-              <div className="px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+              <div className="px-5 pb-4 border-b border-stone-100 dark:border-stone-800">
                 {authLoading ? (
-                  <div className="flex items-center gap-2 text-stone-400">
-                    <Loader2 className="animate-spin" size={16} />
+                  <div className="flex items-center gap-3 text-stone-400 py-2">
+                    <Loader2 className="animate-spin" size={20} />
                     <span className="text-sm">...</span>
                   </div>
                 ) : user ? (
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`}
-                        alt={user.displayName || 'User'}
-                        className="w-9 h-9 rounded-full border border-stone-200 dark:border-stone-700"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-stone-700 dark:text-stone-200 truncate">{user.displayName || 'User'}</p>
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">{loggedInLabel}</p>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}`}
+                      alt={user.displayName || 'User'}
+                      className="w-12 h-12 rounded-full border border-stone-200 dark:border-stone-700"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 dark:text-white truncate">{user.displayName || 'User'}</p>
+                      <p className="text-sm text-stone-500 dark:text-stone-400 truncate">{user.email || ''}</p>
                     </div>
-                    <button
-                      onClick={logout}
-                      className="shrink-0 text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
-                    >
-                      {t.logout}
-                    </button>
                   </div>
                 ) : (
                   <button
-                    onClick={handleLogin}
+                    onClick={() => {
+                      setShowMobileUserMenu(false);
+                      void handleLogin();
+                    }}
                     disabled={loginPending}
-                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {loginPending ? (language === 'vi' ? 'Đang đăng nhập...' : language === 'ja' ? 'ログイン中...' : 'Signing in...') : t.login}
+                    {loginPending ? <Loader2 className="animate-spin" size={16} /> : <LogIn size={16} />}
+                    {mobileLoginLabel}
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-6 py-8">
-                <div className="mb-8">
-                  <p className="text-xs font-black tracking-[0.28em] text-stone-400 dark:text-stone-500 uppercase mb-6">{t.product}</p>
-                  <div className="space-y-3">
-                    <button onClick={() => scrollToSectionFromMenu('footer-product')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.features}</button>
-                    <button
-                      onClick={() => {
-                        setShowMobileMenu(false);
-                        setShowUpgradeModal(true);
-                      }}
-                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
-                    >
-                      {t.pricing}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileMenu(false);
-                        setActiveUtility('esim');
-                      }}
-                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
-                    >
-                      {esimPaymentLabel}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileMenu(false);
-                        setActiveUtility('coupons');
-                      }}
-                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
-                    >
-                      {couponDealsLabel}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileMenu(false);
-                        window.open('https://olachill.com', '_blank', 'noopener,noreferrer');
-                      }}
-                      className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1"
-                    >
-                      {t.downloadApp}
-                    </button>
-                  </div>
-                </div>
+              <div className="p-3">
+                <button
+                  onClick={() => {
+                    setShowMobileUserMenu(false);
+                    clearChat();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <Plus size={20} className="text-stone-500 dark:text-stone-400" />
+                  <span className="font-semibold">{t.newChat}</span>
+                </button>
 
-                <div>
-                  <p className="text-xs font-black tracking-[0.28em] text-stone-400 dark:text-stone-500 uppercase mb-6">{t.support}</p>
-                  <div className="space-y-3">
-                    <button onClick={() => scrollToSectionFromMenu('footer-support')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.helpCenter}</button>
-                    <button onClick={() => scrollToSectionFromMenu('footer-about')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{aboutLabel}</button>
-                    <button onClick={() => scrollToSectionFromMenu('footer-support')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.contact}</button>
-                    <button onClick={() => scrollToSectionFromMenu('footer-support')} className="block w-full text-left text-[2.1rem] leading-[1.2] font-bold text-stone-700 dark:text-stone-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors py-1">{t.terms}</button>
-                  </div>
-                </div>
-              </div>
+                <button
+                  onClick={() => {
+                    setShowMobileUserMenu(false);
+                    setShowSavedPlans(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <MapPin size={20} className="text-stone-500 dark:text-stone-400" />
+                  <span className="font-semibold">{myTripsLabel}</span>
+                </button>
 
-              <div className="border-t border-stone-100 dark:border-stone-800 px-6 py-5">
-                <p className="text-center text-sm text-stone-400 dark:text-stone-500">© 2026 {t.appName}. {t.allRightsReserved}</p>
+                <button
+                  onClick={() => {
+                    setShowMobileUserMenu(false);
+                    setShowUpgradeModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <Crown size={20} className="text-stone-500 dark:text-stone-400" />
+                  <span className="font-semibold">{manageSubscriptionLabel}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowMobileSettingPanel((prev) => !prev)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <span className="inline-flex items-center gap-3">
+                    <Settings size={20} className="text-stone-500 dark:text-stone-400" />
+                    <span className="font-semibold">{settingsLabel}</span>
+                  </span>
+                  <ChevronDown size={16} className={`text-stone-400 transition-transform ${showMobileSettingPanel ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {showMobileSettingPanel && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="ml-6 mt-1 mb-2 border-l border-stone-200 dark:border-stone-700 pl-3 space-y-1"
+                    >
+                      <div className="flex items-center gap-2 px-2 py-2 text-stone-700 dark:text-stone-300">
+                        <CircleDollarSign size={18} className="text-stone-400" />
+                        <span className="text-sm font-medium">{currencyLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-2 py-2 text-stone-700 dark:text-stone-300">
+                        <Thermometer size={18} className="text-stone-400" />
+                        <span className="text-sm font-medium">{temperatureLabel}</span>
+                      </div>
+                      <div className="px-2 py-2">
+                        <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-2">
+                          <Languages size={18} className="text-stone-400" />
+                          <span className="text-sm font-medium">{languageLabel}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {languageOptions.map((item) => (
+                            <button
+                              key={`mobile-lang-${item.code}`}
+                              onClick={() => setLanguage(item.code)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                                language === item.code
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="my-2 border-t border-stone-100 dark:border-stone-800" />
+
+                <button
+                  onClick={() => scrollToSectionFromMobileUserMenu('footer-about')}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <Info size={20} className="text-stone-500 dark:text-stone-400" />
+                  <span className="font-semibold">{aboutLabel}</span>
+                </button>
+
+                <button
+                  onClick={() => scrollToSectionFromMobileUserMenu('footer-support')}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <MessageSquare size={20} className="text-stone-500 dark:text-stone-400" />
+                  <span className="font-semibold">{t.contact}</span>
+                </button>
+
+                <button
+                  onClick={() => scrollToSectionFromMobileUserMenu('footer-support')}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                >
+                  <FileText size={20} className="text-stone-500 dark:text-stone-400" />
+                  <span className="font-semibold">{t.terms}</span>
+                </button>
+
+                {user ? (
+                  <button
+                    onClick={() => {
+                      setShowMobileUserMenu(false);
+                      void logout();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-1"
+                  >
+                    <LogOut size={20} />
+                    <span className="font-semibold">{t.logout}</span>
+                  </button>
+                ) : null}
               </div>
-            </motion.aside>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
@@ -3741,41 +4373,50 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
         )}
       </AnimatePresence>
 
-      <main className="flex-1 pt-28 sm:pt-32 pb-32 px-4 sm:px-6 max-w-5xl mx-auto w-full relative overflow-x-hidden">
+      <main
+        className={`flex-1 pt-28 sm:pt-32 pb-32 w-full relative overflow-x-hidden mx-auto ${
+          isUtilityWideLayout ? 'max-w-[1700px] px-2 sm:px-5' : 'max-w-5xl px-4 sm:px-6'
+        }`}
+      >
         {messages.length === 0 ? (
           /* Hero Section */
-          <div className="flex flex-col items-center text-center py-12">
+          <div className={`flex flex-col ${isUtilityFullscreen ? 'items-stretch text-left py-2' : 'items-center text-center py-12'}`}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-3xl px-1 sm:px-0 overflow-x-hidden"
+              className={`w-full px-1 sm:px-0 overflow-x-hidden ${isUtilityWideLayout ? 'max-w-full' : 'max-w-3xl mx-auto'}`}
             >
-              <h1 className="hidden md:block text-7xl font-serif leading-[1.1] mb-8 dark:text-white break-words [overflow-wrap:anywhere]">
-                {t.heroTitle}
-                {t.heroSubtitle ? (
-                  <span className="block italic text-emerald-600 dark:text-emerald-400 mt-1">{t.heroSubtitle}</span>
-                ) : null}
-              </h1>
+              {!isUtilityFullscreen ? (
+                <h1 className="hidden md:block text-7xl font-serif leading-[1.1] mb-8 dark:text-white break-words [overflow-wrap:anywhere]">
+                  {t.heroTitle}
+                  {t.heroSubtitle ? (
+                    <span className="block italic text-emerald-600 dark:text-emerald-400 mt-1">{t.heroSubtitle}</span>
+                  ) : null}
+                </h1>
+              ) : null}
 
               <AnimatePresence mode="wait">
                 {activeUtility ? (
-                  <div className="flex justify-center mb-12">
+                  <div className={`mb-12 ${isUtilityWideLayout ? 'w-full' : 'flex justify-center'}`}>
                     {activeUtility === 'train' && (
                       <TrainSearch 
                         onClose={() => setActiveUtility(null)} 
                         language={language}
+                        fullLayout={isUtilityFullscreen}
                       />
                     )}
                     {activeUtility === 'tickets' && (
                       <TicketSearch 
                         onClose={() => setActiveUtility(null)} 
                         language={language}
+                        fullLayout={isUtilityFullscreen}
                       />
                     )}
                     {activeUtility === 'esim' && (
                       <EsimShop
                         onClose={() => setActiveUtility(null)}
                         language={language}
+                        fullLayout={activeUtility === 'esim'}
                       />
                     )}
                     {activeUtility === 'coupons' && (
@@ -3905,37 +4546,39 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                 )}
               </AnimatePresence>
               
-              <div className="hidden md:block w-full max-w-4xl mx-auto overflow-hidden">
-                <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-8 text-center">{t.popularTopics}</p>
-                <div className="flex w-full max-w-full gap-4 overflow-x-auto overscroll-x-contain pb-2 px-1 snap-x snap-mandatory">
-                  {t.suggestedTopics.filter((topic: any) => !topic.utility).map((topic: any) => (
-                    <button 
-                      key={topic.text}
-                      onClick={() => {
-                        if (topic.utility) {
-                          setActiveUtility(topic.utility as any);
-                        } else {
-                          setPrompt(topic.query || '');
-                        }
-                      }}
-                      className="group min-w-[240px] sm:min-w-[300px] p-5 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-4 snap-start"
-                    >
-                      <div className="w-12 h-12 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-sm">
-                        {topic.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-stone-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
-                          {topic.text}
-                        </h4>
-                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
-                          {topic.description}
-                        </p>
-                      </div>
-                      <ArrowRight size={16} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
-                    </button>
-                  ))}
+              {!isUtilityFullscreen ? (
+                <div className="hidden md:block w-full max-w-4xl mx-auto overflow-hidden">
+                  <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-8 text-center">{t.popularTopics}</p>
+                  <div className="flex w-full max-w-full gap-4 overflow-x-auto overscroll-x-contain pb-2 px-1 snap-x snap-mandatory">
+                    {t.suggestedTopics.filter((topic: any) => !topic.utility).map((topic: any) => (
+                      <button 
+                        key={topic.text}
+                        onClick={() => {
+                          if (topic.utility) {
+                            setActiveUtility(topic.utility as any);
+                          } else {
+                            setPrompt(topic.query || '');
+                          }
+                        }}
+                        className="group min-w-[240px] sm:min-w-[300px] p-5 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl hover:border-emerald-500/30 dark:hover:border-emerald-400/30 hover:shadow-xl hover:shadow-emerald-500/5 transition-all text-left flex items-center gap-4 snap-start"
+                      >
+                        <div className="w-12 h-12 shrink-0 bg-stone-50 dark:bg-stone-800 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-sm">
+                          {topic.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-stone-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+                            {topic.text}
+                          </h4>
+                          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
+                            {topic.description}
+                          </p>
+                        </div>
+                        <ArrowRight size={16} className="text-stone-300 dark:text-stone-600 group-hover:text-emerald-500 transition-colors shrink-0" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </motion.div>
           </div>
         ) : (

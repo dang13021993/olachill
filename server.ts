@@ -3,7 +3,13 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+import { createRequire } from "module";
 import { GoogleGenAI, Type } from "@google/genai";
+
+const require = createRequire(import.meta.url);
+const PAYPAY = require("@paypayopa/paypayopa-sdk-node");
+
+type EsimPaymentMethod = "paypay" | "stripe" | "paypal" | "bank_transfer";
 
 type PartnerLinkMap = Record<string, string>;
 
@@ -365,6 +371,114 @@ function applyEsimMarkup(baseJpy: number): { final: number; diff: number } {
     final,
     diff: Math.max(0, final - baseJpy)
   };
+}
+
+function toBaseJpy(plan: EsimPlan): number {
+  if (typeof plan.basePriceJpy === "number" && Number.isFinite(plan.basePriceJpy)) {
+    return Math.round(plan.basePriceJpy);
+  }
+  if (String(plan.currency || "").toUpperCase() === "JPY") {
+    return Math.round(plan.priceUsd);
+  }
+  return Math.round(Number(plan.priceUsd || 0) * 150);
+}
+
+function toDisplayJpy(plan: EsimPlan): number {
+  if (typeof plan.displayPriceJpy === "number" && Number.isFinite(plan.displayPriceJpy)) {
+    return Math.round(plan.displayPriceJpy);
+  }
+  return toBaseJpy(plan);
+}
+
+function isPayPayConfigured(): boolean {
+  return Boolean(process.env.PAYPAY_API_KEY && process.env.PAYPAY_API_SECRET);
+}
+
+function resolvePayPayEnv(): "PROD" | "STAGING" {
+  const mode = String(process.env.PAYPAY_MODE || "").trim().toLowerCase();
+  if (mode === "prod" || mode === "production" || mode === "live") {
+    return "PROD";
+  }
+  return "STAGING";
+}
+
+function parsePayPayCheckoutUrl(body: any): string | null {
+  const candidates = [
+    body?.data?.url,
+    body?.data?.redirectUrl,
+    body?.data?.webUrl,
+    body?.data?.webURL,
+    body?.data?.deeplink,
+    body?.data?.deeplinkUrl
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim().startsWith("http")) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function getRequestOrigin(req: express.Request): string {
+  const protoHeader = req.headers["x-forwarded-proto"];
+  const proto = typeof protoHeader === "string" ? protoHeader.split(",")[0].trim() : req.protocol || "https";
+  const hostHeader = req.headers["x-forwarded-host"] || req.headers.host;
+  const host = typeof hostHeader === "string" ? hostHeader.split(",")[0].trim() : "";
+  if (!host) {
+    return String(process.env.APP_URL || "").replace(/\/+$/, "");
+  }
+  return `${proto}://${host}`;
+}
+
+async function createPayPayQrCode(params: {
+  amountJpy: number;
+  planId: string;
+  planName: string;
+  returnUrl: string;
+}): Promise<{ checkoutUrl: string; merchantPaymentId: string; paypayCodeId?: string }> {
+  const clientId = String(process.env.PAYPAY_API_KEY || "").trim();
+  const clientSecret = String(process.env.PAYPAY_API_SECRET || "").trim();
+  if (!clientId || !clientSecret) {
+    throw new Error("PayPay credentials are missing");
+  }
+
+  PAYPAY.Configure({
+    env: resolvePayPayEnv(),
+    clientId,
+    clientSecret,
+    merchantId: String(process.env.PAYPAY_MERCHANT_ID || "").trim() || undefined
+  });
+
+  const merchantPaymentId = `olachill-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`.slice(0, 64);
+  const payload = {
+    merchantPaymentId,
+    amount: {
+      amount: Math.max(1, Math.round(params.amountJpy)),
+      currency: "JPY"
+    },
+    codeType: "ORDER_QR",
+    orderDescription: `Olachill eSIM ${params.planName}`.slice(0, 255),
+    redirectUrl: params.returnUrl,
+    redirectType: "WEB_LINK"
+  };
+
+  const response = await PAYPAY.QRCodeCreate(payload);
+  const status = Number(response?.STATUS || 0);
+  const body = response?.BODY;
+  const resultCode = typeof body?.resultInfo?.code === "string" ? body.resultInfo.code : "";
+
+  if (status < 200 || status >= 300 || (resultCode && resultCode !== "SUCCESS")) {
+    const message = typeof body?.resultInfo?.message === "string" ? body.resultInfo.message : "PayPay QR create failed";
+    throw new Error(`PayPay QR create failed: status=${status} code=${resultCode || "unknown"} message=${message}`);
+  }
+
+  const checkoutUrl = parsePayPayCheckoutUrl(body);
+  if (!checkoutUrl) {
+    throw new Error("PayPay QR response missing checkout url");
+  }
+
+  const paypayCodeId = typeof body?.data?.codeId === "string" ? body.data.codeId : undefined;
+  return { checkoutUrl, merchantPaymentId, paypayCodeId };
 }
 
 function deriveFeatureList(plan: any): string[] {
@@ -1344,7 +1458,11 @@ async function startServer() {
   });
 
   app.post("/api/esim/order", async (req, res) => {
-    const { planId, email } = req.body || {};
+    const { planId, email, paymentMethod } = req.body || {};
+    const normalizedPaymentMethod: EsimPaymentMethod =
+      paymentMethod === "paypay" || paymentMethod === "stripe" || paymentMethod === "paypal" || paymentMethod === "bank_transfer"
+        ? paymentMethod
+        : "bank_transfer";
 
     if (typeof planId !== "string" || !planId.trim()) {
       res.status(400).json({ error: "planId is required" });
@@ -1384,6 +1502,50 @@ async function startServer() {
       return;
     }
 
+    if (normalizedPaymentMethod === "paypay") {
+      if (!isPayPayConfigured()) {
+        res.status(503).json({
+          error: "PayPay is not configured on server",
+          hint: "Set PAYPAY_API_KEY and PAYPAY_API_SECRET",
+          paymentMethod: normalizedPaymentMethod,
+          providerConfigured: isEsimProviderConfigured()
+        });
+        return;
+      }
+
+      const amountJpy = toDisplayJpy(selectedPlan);
+      const baseOrigin = getRequestOrigin(req);
+      const configuredReturnPath = String(process.env.PAYPAY_REDIRECT_URL || "").trim();
+      const returnUrl = configuredReturnPath
+        ? configuredReturnPath
+        : `${baseOrigin.replace(/\/+$/, "")}/?payment=paypay&status=return&planId=${encodeURIComponent(normalizedPlanId)}`;
+
+      try {
+        const paypayOrder = await createPayPayQrCode({
+          amountJpy,
+          planId: normalizedPlanId,
+          planName: selectedPlan.name,
+          returnUrl
+        });
+        res.json({
+          source: "paypay",
+          countryLocked: ESIM_ALLOWED_COUNTRY,
+          paymentMethod: normalizedPaymentMethod,
+          orderId: paypayOrder.merchantPaymentId,
+          checkoutUrl: paypayOrder.checkoutUrl,
+          paypayCodeId: paypayOrder.paypayCodeId
+        });
+        return;
+      } catch (error) {
+        console.error("PayPay order failed:", error);
+        res.status(502).json({
+          error: "Failed to create PayPay payment",
+          paymentMethod: normalizedPaymentMethod
+        });
+        return;
+      }
+    }
+
     try {
       const providerOrder = await createEsimOrderWithProvider(
         normalizedPlanId,
@@ -1394,6 +1556,7 @@ async function startServer() {
         res.json({
           source: "provider",
           countryLocked: ESIM_ALLOWED_COUNTRY,
+          paymentMethod: normalizedPaymentMethod,
           ...providerOrder
         });
         return;

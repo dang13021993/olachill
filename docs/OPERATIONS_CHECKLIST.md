@@ -101,6 +101,10 @@ Cloud Run variables:
 - `CHECKOUT_PRO_URL`
 - `ESIM_PROVIDER_BASE_URL`
 - `ESIM_PROVIDER_API_KEY`
+- `PAYPAY_MODE` (`staging` hoac `live`)
+- `PAYPAY_API_KEY`
+- `PAYPAY_API_SECRET`
+- `PAYPAY_MERCHANT_ID` (neu merchant profile yeu cau)
 - `AFFILIATE_LINKS_JSON` (co key `klook`, `kkday`)
 - `KLOOK_COUPON_CODE` / `KKDAY_COUPON_CODE` (neu co)
 

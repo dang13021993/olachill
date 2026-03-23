@@ -62,8 +62,7 @@ void ensureAuthPersistence();
 // Auth Helpers
 export const loginWithGoogle = async () => {
   await ensureAuthPersistence();
-  const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
-  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
+  const enableRedirectFallback = String((import.meta as any)?.env?.VITE_AUTH_REDIRECT_FALLBACK || '').toLowerCase() === 'true';
 
   const runRedirectFlow = async () => {
     if (typeof window !== 'undefined') {
@@ -73,45 +72,40 @@ export const loginWithGoogle = async () => {
     return null;
   };
 
-  // Redirect needs persisted storage across navigation. If we only have memory,
-  // prefer popup flow to keep the auth state on the current page.
-  const shouldPreferPopup = persistenceMode === 'memory' || !isMobile;
+  try {
+    const popupResult = await signInWithPopup(auth, googleProvider);
+    return popupResult?.user || null;
+  } catch (popupError: any) {
+    const code = String(popupError?.code || '');
+    const canFallbackToRedirect =
+      code === 'auth/popup-blocked' ||
+      code === 'auth/popup-closed-by-user' ||
+      code === 'auth/cancelled-popup-request' ||
+      code === 'auth/operation-not-supported-in-this-environment' ||
+      code === 'auth/internal-error';
 
-  if (shouldPreferPopup) {
-    try {
-      const popupResult = await signInWithPopup(auth, googleProvider);
-      return popupResult?.user || null;
-    } catch (popupError: any) {
-      const code = String(popupError?.code || '');
-      const canFallbackToRedirect =
-        code === 'auth/popup-blocked' ||
-        code === 'auth/popup-closed-by-user' ||
-        code === 'auth/cancelled-popup-request' ||
-        code === 'auth/operation-not-supported-in-this-environment';
-
-      if (canFallbackToRedirect && persistenceMode !== 'memory') {
-        return runRedirectFlow();
-      }
-      throw popupError;
+    if (enableRedirectFallback && canFallbackToRedirect && persistenceMode !== 'memory') {
+      console.warn('Popup login failed, fallback to redirect flow:', code);
+      return runRedirectFlow();
     }
+    throw popupError;
   }
-
-  return runRedirectFlow();
 };
 
 export const consumeRedirectLoginResult = async () => {
-  if (typeof window !== 'undefined') {
-    const pending = sessionStorage.getItem(REDIRECT_PENDING_KEY);
-    if (pending !== '1') {
-      return null;
-    }
-  }
-
   await ensureAuthPersistence();
   try {
     const result = await getRedirectResult(auth);
     return result?.user || null;
-  } catch (error) {
+  } catch (error: any) {
+    const code = String(error?.code || '');
+    if (code === 'auth/no-auth-event') {
+      return null;
+    }
+    if (code === 'auth/invalid-action-code' || code === 'auth/invalid-continue-uri' || code === 'auth/argument-error') {
+      console.warn('Ignoring stale/invalid redirect auth response:', code);
+      return null;
+    }
     console.error("Redirect result error:", error);
     throw error;
   } finally {
