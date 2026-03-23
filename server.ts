@@ -61,7 +61,13 @@ const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
   "klook": "https://www.klook.com/",
   "kkday": "https://www.kkday.com/",
   "kkday-jp-attraction-tickets": "https://www.kkday.com/vi/category/jp-japan/attraction-tickets?cid=24160&ud1=tickets",
+  "kkday-jp-amusement-parks": "https://www.kkday.com/vi/category/jp-japan/amusement-parks/list?currency=VND&sort=omdesc&page=1&count=10&cid=24160&ud1=Parks",
+  "kkday-jp-cheap-bus": "https://www.kkday.com/vi/transportation/japan?cid=24160&ud1=bus",
+  "kkday-jp-jr-pass": "https://www.kkday.com/vi/theme/japan-rail-jr-pass?cid=24160&ud1=jrpass",
+  "kkday-jp-rail-tickets": "https://www.kkday.com/vi/transportation/japan-rail?cid=24160&ud1=train",
+  "kkday-jp-kimono-experience": "https://www.kkday.com/vi/category/jp-japan/cultural-experiences/list?cid=24160&ud1=kimono",
   "kkday-jp-transfer-services": "https://www.kkday.com/vi/product/productlist?destination=D-JP-3261,D-JP-3255,D-JP-3256,D-JP-3254,D-JP-3231,D-JP-3225,D-JP-3252,D-JP-3263,D-JP-3260,D-JP-3242,D-JP-3267,D-JP-3253,D-JP-3239,D-JP-3258,D-JP-3251,D-JP-3224,D-JP-3265,D-JP-3233,D-JP-3262,D-JP-3266,D-JP-3243,D-JP-3227,D-JP-3259,D-JP-3221,D-JP-3250,D-JP-3222,D-JP-3248,D-JP-3220,D-JP-3240,D-JP-3257,D-JP-3264,D-JP-3235,D-JP-3228,D-JP-3232,D-JP-3226,D-JP-3246,D-JP-3223,D-JP-3244,D-JP-3237,D-JP-3219,D-JP-3230,D-JP-3234,D-JP-3249,D-JP-3247,D-JP-3229,D-JP-3236,D-JP-3245,D-JP-3238&product_categories=CATEGORY_068,CATEGORY_069,CATEGORY_070,CATEGORY_071,CATEGORY_063,CATEGORY_064,CATEGORY_065,CATEGORY_059,CATEGORY_062,CATEGORY_060,CATEGORY_061,CATEGORY_067,CATEGORY_056,CATEGORY_058,CATEGORY_057,CATEGORY_066,CATEGORY_095,CATEGORY_072,CATEGORY_073,CATEGORY_074,CATEGORY_075,CATEGORY_077&currency=VND&sort=prec&page=1&count=10&cid=24160&ud1=car",
+  "kkday-jp-private-car": "https://www.kkday.com/vi/product/productlist?destination=D-JP-3261,D-JP-3255,D-JP-3256,D-JP-3254,D-JP-3231,D-JP-3225,D-JP-3252,D-JP-3263,D-JP-3260,D-JP-3242,D-JP-3267,D-JP-3253,D-JP-3239,D-JP-3258,D-JP-3251,D-JP-3224,D-JP-3265,D-JP-3233,D-JP-3262,D-JP-3266,D-JP-3243,D-JP-3227,D-JP-3259,D-JP-3221,D-JP-3250,D-JP-3222,D-JP-3248,D-JP-3220,D-JP-3240,D-JP-3257,D-JP-3264,D-JP-3235,D-JP-3228,D-JP-3232,D-JP-3226,D-JP-3246,D-JP-3223,D-JP-3244,D-JP-3237,D-JP-3219,D-JP-3230,D-JP-3234,D-JP-3249,D-JP-3247,D-JP-3229,D-JP-3236,D-JP-3245,D-JP-3238&product_categories=CATEGORY_068&currency=VND&sort=prec&page=1&count=10&cid=24160&ud1=privatecar",
   "kkday-global-restaurants": "https://www.kkday.com/vi/category/global/restaurants/list?currency=VND&sort=prec&page=1&count=10&cid=24160&ud1=food"
 };
 
@@ -359,13 +365,12 @@ function convertToJpy(amount: number, currency: string): number {
 }
 
 function applyEsimMarkup(baseJpy: number): { final: number; diff: number } {
-  const markupPercent = Number(process.env.ESIM_MARKUP_PERCENT || 0);
-  const markupJpy = Number(process.env.ESIM_MARKUP_JPY || 0);
-  const roundStep = Number(process.env.ESIM_PRICE_ROUND_STEP_JPY || 10);
-  const safeRoundStep = Number.isFinite(roundStep) && roundStep > 0 ? roundStep : 10;
-  const safePercent = Number.isFinite(markupPercent) ? markupPercent : 0;
-  const safeMarkupJpy = Number.isFinite(markupJpy) ? markupJpy : 0;
-  const rawFinal = baseJpy * (1 + safePercent / 100) + safeMarkupJpy;
+  // Business rule: sale price defaults to 1.3x provider base price.
+  const markupMultiplier = Number(process.env.ESIM_MARKUP_MULTIPLIER || 1.3);
+  const roundStep = Number(process.env.ESIM_PRICE_ROUND_STEP_JPY || 1);
+  const safeRoundStep = Number.isFinite(roundStep) && roundStep > 0 ? roundStep : 1;
+  const safeMultiplier = Number.isFinite(markupMultiplier) && markupMultiplier > 0 ? markupMultiplier : 1.3;
+  const rawFinal = baseJpy * safeMultiplier;
   const final = Math.max(baseJpy, Math.ceil(rawFinal / safeRoundStep) * safeRoundStep);
   return {
     final,
@@ -565,19 +570,7 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
 
       const originalAmount = normalizeMoneyValue(providerBaseAmountRaw ?? priceUsd);
       const originalJpy = Math.round(convertToJpy(originalAmount, currency));
-      const saleJpyFromProvider =
-        toNum(plan.salePriceJpy) ??
-        toNum(plan.displayPriceJpy) ??
-        toNum(plan.priceJpy);
-      const saleAmountFromProvider = providerRetailAmountRaw !== null
-        ? normalizeMoneyValue(providerRetailAmountRaw)
-        : null;
-      const saleJpyComputed = saleJpyFromProvider !== null
-        ? Math.round(saleJpyFromProvider)
-        : saleAmountFromProvider !== null
-          ? Math.round(convertToJpy(saleAmountFromProvider, currency))
-          : applyEsimMarkup(originalJpy).final;
-      const saleJpy = Math.max(originalJpy, saleJpyComputed);
+      const saleJpy = applyEsimMarkup(originalJpy).final;
       const diffJpy = Math.max(0, saleJpy - originalJpy);
       const priceChangePercent = originalJpy > 0
         ? Math.round(((saleJpy - originalJpy) / originalJpy) * 100)

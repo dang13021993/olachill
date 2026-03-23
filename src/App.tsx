@@ -2659,7 +2659,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
     vi: {
       title: 'Nâng cấp gói Ola',
       subtitle: 'Tăng trải nghiệm, kiểm soát chi phí và mở khóa ưu đãi độc quyền.',
-      highlights: ['Lịch trình đầy đủ', 'Ưu đãi khách sạn độc quyền', 'Mã giảm giá độc quyền', 'Hỗ trợ chuyên gia'],
+      highlights: ['Lịch trình đầy đủ', 'Ưu đãi khách sạn', 'Mã giảm giá', 'Hỗ trợ chuyên gia'],
       currentPlan: 'Gói hiện tại',
       processing: 'Đang xử lý...',
       startNow: 'Bắt đầu',
@@ -2691,7 +2691,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
     en: {
       title: 'Upgrade Ola Plans',
       subtitle: 'Scale your travel experience and unlock premium perks.',
-      highlights: ['Complete itinerary', 'Exclusive hotel offers', 'Exclusive discount codes', 'Expert support'],
+      highlights: ['Full itinerary', 'Hotel perks', 'Discount codes', 'Expert support'],
       currentPlan: 'Current plan',
       processing: 'Processing...',
       startNow: 'Start',
@@ -2723,7 +2723,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
     ja: {
       title: 'Olaプランをアップグレード',
       subtitle: '体験を強化し、限定特典を解放します。',
-      highlights: ['旅程を完全作成', '限定ホテル特典', '限定クーポンコード', '専門家サポート'],
+      highlights: ['旅程を完全作成', 'ホテル特典', 'クーポン', '専門家サポート'],
       currentPlan: '現在のプラン',
       processing: '処理中...',
       startNow: '開始',
@@ -2928,7 +2928,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[120] flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -2940,7 +2940,7 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-5 sm:p-8 shadow-2xl"
+        className="relative w-full max-w-4xl max-h-[94vh] sm:max-h-[92vh] overflow-y-auto bg-white dark:bg-stone-900 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 p-4 sm:p-8 shadow-2xl mt-16 sm:mt-0"
       >
         <button
           onClick={onClose}
@@ -2949,24 +2949,24 @@ const UpgradeModal = ({ onClose, language }: { onClose: () => void; language: La
           <X size={18} className="text-stone-400" />
         </button>
 
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-2.5 mb-1.5">
           <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-300 flex items-center justify-center">
             <Crown size={20} />
           </div>
-          <h3 className="text-2xl font-black tracking-tight dark:text-white">{copy.title}</h3>
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight dark:text-white leading-tight">{copy.title}</h3>
         </div>
-        <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">{copy.subtitle}</p>
+        <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mb-4 sm:mb-6">{copy.subtitle}</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-7">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-5 sm:mb-7">
           {copy.highlights.map((item) => (
             <div
               key={item}
-              className="rounded-2xl border border-violet-100 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-900/10 p-4 flex items-center gap-3"
+              className="rounded-xl sm:rounded-2xl border border-violet-100 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-900/10 p-2.5 sm:p-4 flex items-center gap-2 sm:gap-3 min-h-[62px] sm:min-h-[auto]"
             >
-              <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                <CheckCircle2 size={16} />
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={14} />
               </span>
-              <span className="font-bold text-stone-800 dark:text-stone-100">{item}</span>
+              <span className="font-semibold text-sm sm:text-base leading-snug text-stone-800 dark:text-stone-100">{item}</span>
             </div>
           ))}
         </div>
