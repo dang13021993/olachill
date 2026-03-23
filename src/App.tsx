@@ -1069,6 +1069,7 @@ interface EsimPlan {
   validityDays: number;
   priceUsd: number;
   currency: string;
+  providerAmountRaw?: number;
   checkoutUrl?: string;
   providerName?: string;
   network?: string;
@@ -1108,6 +1109,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       providerNotConfigured: 'Server chưa bật cổng eSIM provider. Vui lòng cấu hình ESIM_PROVIDER_BASE_URL và ESIM_PROVIDER_API_KEY trên Cloud Run.',
       providerNotConfiguredShort: 'Chưa bật thanh toán eSIM',
       checkoutMissing: 'Gói này chưa có link thanh toán từ nhà cung cấp.',
+      orderCreated: 'Đã tạo đơn thành công. Mã đơn: {orderId}',
       paymentTitle: 'Phương thức thanh toán',
       paymentSubtitle: 'Chọn phương thức thanh toán phù hợp',
       totalAmount: 'Tổng số tiền',
@@ -1143,6 +1145,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       providerNotConfigured: 'eSIM provider is not configured on server. Set ESIM_PROVIDER_BASE_URL and ESIM_PROVIDER_API_KEY on Cloud Run.',
       providerNotConfiguredShort: 'eSIM checkout unavailable',
       checkoutMissing: 'This plan does not include a checkout URL yet.',
+      orderCreated: 'Order created successfully. Order ID: {orderId}',
       paymentTitle: 'Payment Method',
       paymentSubtitle: 'Choose the payment option that fits',
       totalAmount: 'Total Amount',
@@ -1178,6 +1181,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       providerNotConfigured: 'サーバーで eSIM プロバイダーが未設定です。Cloud Run に ESIM_PROVIDER_BASE_URL と ESIM_PROVIDER_API_KEY を設定してください。',
       providerNotConfiguredShort: 'eSIM 決済は未設定です',
       checkoutMissing: 'このプランには決済URLがありません。',
+      orderCreated: '注文を作成しました。注文ID: {orderId}',
       paymentTitle: 'お支払い方法',
       paymentSubtitle: '最適なお支払い方法を選択',
       totalAmount: '合計金額',
@@ -1306,7 +1310,11 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       const resp = await fetch('/api/esim/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: plan.id, paymentMethod })
+        body: JSON.stringify({
+          planId: plan.id,
+          paymentMethod,
+          providerAmountRaw: plan.providerAmountRaw
+        })
       });
       const json = await resp.json();
       if (!resp.ok) {
@@ -1315,6 +1323,10 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       }
       if (json?.checkoutUrl) {
         openCheckoutUrl(json.checkoutUrl);
+        return true;
+      }
+      if (json?.orderId) {
+        alert(copy.orderCreated.replace('{orderId}', String(json.orderId)));
         return true;
       }
       alert(copy.checkoutMissing);

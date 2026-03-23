@@ -14,6 +14,7 @@ interface EsimPlan {
   validityDays: number;
   priceUsd: number;
   currency: string;
+  providerAmountRaw?: number;
   checkoutUrl?: string;
   providerName?: string;
   network?: string;
@@ -106,6 +107,94 @@ function toNum(value: unknown): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
+function normalizeMoneyValue(amount: number): number {
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+  // eSIMAccess values are often scaled by 10,000 (e.g. 57000 => 5.7)
+  if (amount >= 1000) {
+    return amount / 10000;
+  }
+  return amount;
+}
+
+function formatDataAmount(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  const amount = toNum(value);
+  if (amount === null || amount <= 0) {
+    return null;
+  }
+
+  if (amount >= 1024 * 1024) {
+    const gb = amount / (1024 ** 3);
+    if (gb >= 1) {
+      const rounded = gb >= 10 ? Math.round(gb) : Math.round(gb * 10) / 10;
+      return Number.isInteger(rounded) ? `${rounded.toFixed(0)} GB` : `${rounded} GB`;
+    }
+    const mb = Math.max(1, Math.round(amount / (1024 ** 2)));
+    return `${mb} MB`;
+  }
+
+  if (amount <= 100) {
+    return Number.isInteger(amount) ? `${amount.toFixed(0)} GB` : `${amount.toFixed(1)} GB`;
+  }
+
+  return `${Math.round(amount)} MB`;
+}
+
+function normalizeValidityDays(plan: any): number {
+  const raw = Number(plan.validityDays || plan.validity || plan.days || plan.duration || 0);
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return 0;
+  }
+
+  const unit = String(plan.durationUnit || plan.validityUnit || "").trim().toUpperCase();
+  if (unit.startsWith("MONTH")) return Math.max(1, Math.round(raw * 30));
+  if (unit.startsWith("YEAR")) return Math.max(1, Math.round(raw * 365));
+  if (unit.startsWith("HOUR")) return Math.max(1, Math.round(raw / 24));
+  return Math.max(1, Math.round(raw));
+}
+
+type EsimProviderMode = "generic" | "esimaccess";
+
+function detectEsimProviderMode(baseUrl: string): EsimProviderMode {
+  const explicit = String(process.env.ESIM_PROVIDER_MODE || "").trim().toLowerCase();
+  if (explicit === "esimaccess") return "esimaccess";
+  if (explicit === "generic") return "generic";
+
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    if (host === "api.esimaccess.com" || host.endsWith(".esimaccess.com")) {
+      return "esimaccess";
+    }
+  } catch {
+    // ignore URL parse error and fallback to generic mode
+  }
+
+  return "generic";
+}
+
+function buildProviderHeaders(mode: EsimProviderMode, apiKey: string, withJsonBody = false): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/json"
+  };
+
+  if (withJsonBody) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (mode === "esimaccess") {
+    headers["RT-AccessCode"] = apiKey;
+  } else {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  return headers;
+}
+
 function convertToJpy(amount: number, currency: string): number {
   const jpyRate = Number(process.env.ESIM_JPY_EXCHANGE_RATE || 150);
   if (currency.toUpperCase() === "JPY") {
@@ -159,21 +248,37 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
     return [];
   }
 
-  const plans = Array.isArray(payload?.plans) ? payload.plans : Array.isArray(payload) ? payload : [];
+  const plans = Array.isArray(payload?.plans)
+    ? payload.plans
+    : Array.isArray(payload?.obj?.packageList)
+      ? payload.obj.packageList
+      : Array.isArray(payload?.obj?.plans)
+        ? payload.obj.plans
+        : Array.isArray(payload)
+          ? payload
+          : [];
 
   return plans
     .map((plan: any) => {
-      const id = String(plan.id || plan.planId || "").trim();
+      const id = String(plan.id || plan.planId || plan.packageCode || plan.slug || "").trim();
       const name = String(plan.name || plan.title || "eSIM Plan").trim();
-      const country = String(plan.country || plan.countryCode || "JP").trim().toUpperCase();
-      const data = String(plan.data || plan.dataAllowance || "N/A").trim();
-      const validityDays = Number(plan.validityDays || plan.validity || plan.days || 0);
-      const priceUsd = Number(plan.priceUsd || plan.price || plan.amount || plan.salePrice || 0);
-      const currency = String(plan.currency || "USD").trim().toUpperCase();
+      const countryRaw = String(plan.country || plan.countryCode || plan.locationCode || plan.location || "JP").trim().toUpperCase();
+      const country = countryRaw.split(",")[0]?.trim() || "JP";
+      const data = String(
+        plan.data ||
+        plan.dataAllowance ||
+        formatDataAmount(plan.volume) ||
+        formatDataAmount(plan.totalVolume) ||
+        "N/A"
+      ).trim();
+      const validityDays = normalizeValidityDays(plan);
+      const currency = String(plan.currency || plan.currencyCode || "USD").trim().toUpperCase();
+      const rawPrice = toNum(plan.priceUsd) ?? toNum(plan.price) ?? toNum(plan.amount) ?? toNum(plan.salePrice) ?? 0;
+      const priceUsd = normalizeMoneyValue(rawPrice);
       const checkoutUrl = typeof plan.checkoutUrl === "string" ? plan.checkoutUrl : undefined;
       const providerName = typeof plan.providerName === "string" ? plan.providerName : typeof plan.provider === "string" ? plan.provider : undefined;
       const network = typeof plan.network === "string" ? plan.network : undefined;
-      const speed = typeof plan.speed === "string" ? plan.speed : undefined;
+      const speed = typeof plan.speed === "string" ? plan.speed : typeof plan.speedLevel === "string" ? plan.speedLevel : undefined;
       const coverage = typeof plan.coverage === "string" ? plan.coverage : typeof plan.region === "string" ? plan.region : undefined;
       const description = typeof plan.description === "string" ? plan.description : undefined;
 
@@ -181,22 +286,34 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
         return null;
       }
 
-      const providerBaseAmount =
+      const providerBaseAmountRaw =
         toNum(plan.basePrice) ??
         toNum(plan.originalPrice) ??
         toNum(plan.listPrice) ??
         toNum(plan.compareAtPrice) ??
+        toNum(plan.price) ??
+        toNum(plan.amount) ??
+        toNum(plan.priceUsd) ??
         priceUsd;
-      const originalAmount = providerBaseAmount ?? priceUsd;
+      const providerRetailAmountRaw =
+        toNum(plan.retailPrice) ??
+        toNum(plan.displayPrice) ??
+        toNum(plan.salePrice);
+
+      const originalAmount = normalizeMoneyValue(providerBaseAmountRaw ?? priceUsd);
       const originalJpy = Math.round(convertToJpy(originalAmount, currency));
       const saleJpyFromProvider =
         toNum(plan.salePriceJpy) ??
         toNum(plan.displayPriceJpy) ??
-        toNum(plan.salePrice) ??
         toNum(plan.priceJpy);
+      const saleAmountFromProvider = providerRetailAmountRaw !== null
+        ? normalizeMoneyValue(providerRetailAmountRaw)
+        : null;
       const saleJpyComputed = saleJpyFromProvider !== null
-        ? Math.round(convertToJpy(saleJpyFromProvider, currency))
-        : applyEsimMarkup(originalJpy).final;
+        ? Math.round(saleJpyFromProvider)
+        : saleAmountFromProvider !== null
+          ? Math.round(convertToJpy(saleAmountFromProvider, currency))
+          : applyEsimMarkup(originalJpy).final;
       const saleJpy = Math.max(originalJpy, saleJpyComputed);
       const diffJpy = Math.max(0, saleJpy - originalJpy);
       const discountRate = originalJpy > 0
@@ -211,6 +328,7 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
         validityDays,
         priceUsd,
         currency,
+        providerAmountRaw: providerBaseAmountRaw ?? undefined,
         checkoutUrl,
         providerName,
         network,
@@ -264,58 +382,138 @@ async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] |
     return null;
   }
 
-  const plansEndpoint = process.env.ESIM_PROVIDER_PLANS_PATH || "plans";
+  const mode = detectEsimProviderMode(baseUrl);
+  const plansEndpoint = process.env.ESIM_PROVIDER_PLANS_PATH || (mode === "esimaccess" ? "/api/v1/open/package/list" : "plans");
   const url = resolveProviderEndpoint(baseUrl, plansEndpoint);
-  url.searchParams.set("country", country.toUpperCase());
-  url.searchParams.set("limit", process.env.ESIM_PROVIDER_LIMIT || "200");
-  url.searchParams.set("include", "all");
 
-  const resp = await fetch(url.toString(), {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json"
+  let resp: Response;
+  if (mode === "esimaccess") {
+    const payload: Record<string, string> = {
+      locationCode: country.toUpperCase()
+    };
+    const packageType = String(process.env.ESIM_PROVIDER_PACKAGE_TYPE || "").trim();
+    if (packageType) {
+      payload.type = packageType;
     }
-  });
 
-  if (!resp.ok) {
-    throw new Error(`eSIM provider plans error: ${resp.status} endpoint=${url.pathname}`);
+    resp = await fetch(url.toString(), {
+      method: "POST",
+      headers: buildProviderHeaders(mode, apiKey, true),
+      body: JSON.stringify(payload)
+    });
+  } else {
+    url.searchParams.set("country", country.toUpperCase());
+    url.searchParams.set("limit", process.env.ESIM_PROVIDER_LIMIT || "200");
+    url.searchParams.set("include", "all");
+
+    resp = await fetch(url.toString(), {
+      method: "GET",
+      headers: buildProviderHeaders(mode, apiKey)
+    });
   }
 
-  const json = await resp.json();
+  const responseText = await resp.text();
+  let json: any = null;
+  try {
+    json = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!resp.ok) {
+    throw new Error(`eSIM provider plans error: ${resp.status} endpoint=${url.pathname} body=${responseText.slice(0, 300)}`);
+  }
+
+  if (json?.success === false) {
+    throw new Error(`eSIM provider plans errorCode=${json?.errorCode || "unknown"} message=${json?.errorMsg || json?.errorMessage || "unknown"} endpoint=${url.pathname}`);
+  }
+
   return normalizeEsimPlans(json);
 }
 
-async function createEsimOrderWithProvider(planId: string, email?: string): Promise<{ checkoutUrl?: string; orderId?: string } | null> {
+async function createEsimOrderWithProvider(
+  planId: string,
+  email?: string,
+  providerAmountRaw?: unknown
+): Promise<{ checkoutUrl?: string; orderId?: string } | null> {
   const baseUrl = process.env.ESIM_PROVIDER_BASE_URL;
   const apiKey = process.env.ESIM_PROVIDER_API_KEY;
   if (!baseUrl || !apiKey) {
     return null;
   }
 
-  const ordersEndpoint = process.env.ESIM_PROVIDER_ORDERS_PATH || "orders";
+  const mode = detectEsimProviderMode(baseUrl);
+  const ordersEndpoint = process.env.ESIM_PROVIDER_ORDERS_PATH || (mode === "esimaccess" ? "/api/v1/open/esim/order" : "orders");
   const url = resolveProviderEndpoint(baseUrl, ordersEndpoint);
-  const resp = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json"
-    },
-    body: JSON.stringify({
-      planId,
-      email
-    })
-  });
 
-  if (!resp.ok) {
-    throw new Error(`eSIM provider order error: ${resp.status} endpoint=${url.pathname}`);
+  let resp: Response;
+  if (mode === "esimaccess") {
+    const normalizedAmount = toNum(providerAmountRaw);
+    const amountRaw = normalizedAmount !== null && normalizedAmount > 0 ? Math.round(normalizedAmount) : undefined;
+    const packageInfo: Record<string, unknown> = {
+      packageCode: planId,
+      count: 1
+    };
+    if (amountRaw !== undefined) {
+      packageInfo.price = amountRaw;
+    }
+
+    const body: Record<string, unknown> = {
+      transactionId: `olachill-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+      packageInfoList: [packageInfo]
+    };
+    if (amountRaw !== undefined) {
+      body.amount = amountRaw;
+    }
+    if (email) {
+      body.email = email;
+    }
+
+    resp = await fetch(url.toString(), {
+      method: "POST",
+      headers: buildProviderHeaders(mode, apiKey, true),
+      body: JSON.stringify(body)
+    });
+  } else {
+    resp = await fetch(url.toString(), {
+      method: "POST",
+      headers: buildProviderHeaders(mode, apiKey, true),
+      body: JSON.stringify({
+        planId,
+        email
+      })
+    });
   }
 
-  const json: any = await resp.json();
+  const responseText = await resp.text();
+  let json: any = null;
+  try {
+    json = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!resp.ok) {
+    throw new Error(`eSIM provider order error: ${resp.status} endpoint=${url.pathname} body=${responseText.slice(0, 300)}`);
+  }
+
+  if (json?.success === false) {
+    throw new Error(`eSIM provider order errorCode=${json?.errorCode || "unknown"} message=${json?.errorMsg || json?.errorMessage || "unknown"} endpoint=${url.pathname}`);
+  }
+
+  const checkoutUrl =
+    (typeof json?.checkoutUrl === "string" ? json.checkoutUrl : undefined) ||
+    (typeof json?.obj?.checkoutUrl === "string" ? json.obj.checkoutUrl : undefined) ||
+    (typeof json?.obj?.paymentUrl === "string" ? json.obj.paymentUrl : undefined) ||
+    (typeof json?.obj?.payUrl === "string" ? json.obj.payUrl : undefined);
+  const orderId =
+    (typeof json?.orderId === "string" ? json.orderId : undefined) ||
+    (typeof json?.obj?.orderId === "string" ? json.obj.orderId : undefined) ||
+    (typeof json?.obj?.orderNo === "string" ? json.obj.orderNo : undefined);
+
   return {
-    checkoutUrl: typeof json?.checkoutUrl === "string" ? json.checkoutUrl : undefined,
-    orderId: typeof json?.orderId === "string" ? json.orderId : undefined
+    checkoutUrl,
+    orderId
   };
 }
 
@@ -605,7 +803,7 @@ async function startServer() {
   });
 
   app.post("/api/esim/order", async (req, res) => {
-    const { planId, email } = req.body || {};
+    const { planId, email, providerAmountRaw } = req.body || {};
 
     if (typeof planId !== "string" || !planId.trim()) {
       res.status(400).json({ error: "planId is required" });
@@ -622,7 +820,11 @@ async function startServer() {
     }
 
     try {
-      const providerOrder = await createEsimOrderWithProvider(planId, typeof email === "string" ? email : undefined);
+      const providerOrder = await createEsimOrderWithProvider(
+        planId,
+        typeof email === "string" ? email : undefined,
+        providerAmountRaw
+      );
       if (providerOrder) {
         res.json({
           source: "provider",
