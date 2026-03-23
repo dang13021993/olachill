@@ -797,6 +797,8 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
   const t = translations[language];
   const copyByLang = {
     vi: {
+      panelTickets: 'Vé tham quan',
+      panelTransfer: 'Dịch vụ đưa đón',
       sortLabel: 'Sắp xếp',
       sortPopular: 'Nổi tiếng',
       sortPriceAsc: 'Giá thấp -> cao',
@@ -806,10 +808,26 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       priceBudget: '<= 3,000 JPY',
       priceMid: '3,001 - 6,000 JPY',
       priceHigh: '> 6,000 JPY',
-      openKkday: 'Mở vé KKday Nhật Bản',
-      sourceNote: 'Nguồn vé: KKday Japan Attraction Tickets (affiliate)'
+      openKkdayTickets: 'Mở vé KKday Nhật Bản',
+      openKkdayTransfer: 'Mở dịch vụ đưa đón KKday',
+      ticketSourceNote: 'Nguồn vé: KKday Japan Attraction Tickets (affiliate)',
+      transferSourceNote: 'Nguồn dịch vụ đưa đón: KKday Transport & Car (affiliate)',
+      transferCategories: {
+        all: 'Tất cả',
+        rental: 'Xe thuê',
+        airport: 'Đưa đón tại sân bay',
+        card: 'Thẻ',
+        bus: 'Xe buýt',
+        train: 'Tàu hỏa',
+        ferry: 'Phà',
+        bike: 'Thuê xe đạp',
+        car: 'Thuê xe ô tô',
+        flight: 'Chuyến bay'
+      }
     },
     en: {
+      panelTickets: 'Attraction Tickets',
+      panelTransfer: 'Transport Services',
       sortLabel: 'Sort',
       sortPopular: 'Popular',
       sortPriceAsc: 'Price Low -> High',
@@ -819,10 +837,26 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       priceBudget: '<= 3,000 JPY',
       priceMid: '3,001 - 6,000 JPY',
       priceHigh: '> 6,000 JPY',
-      openKkday: 'Open KKday Japan Tickets',
-      sourceNote: 'Ticket source: KKday Japan Attraction Tickets (affiliate)'
+      openKkdayTickets: 'Open KKday Japan Tickets',
+      openKkdayTransfer: 'Open KKday Transport Services',
+      ticketSourceNote: 'Ticket source: KKday Japan Attraction Tickets (affiliate)',
+      transferSourceNote: 'Transport source: KKday Transport & Car (affiliate)',
+      transferCategories: {
+        all: 'All',
+        rental: 'Rental',
+        airport: 'Airport Transfer',
+        card: 'Cards',
+        bus: 'Bus',
+        train: 'Train',
+        ferry: 'Ferry',
+        bike: 'Bike Rental',
+        car: 'Car Rental',
+        flight: 'Flight'
+      }
     },
     ja: {
+      panelTickets: '観光チケット',
+      panelTransfer: '送迎サービス',
       sortLabel: '並び替え',
       sortPopular: '人気順',
       sortPriceAsc: '価格が安い順',
@@ -832,17 +866,63 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
       priceBudget: '3,000 JPY 以下',
       priceMid: '3,001 - 6,000 JPY',
       priceHigh: '6,000 JPY 超',
-      openKkday: 'KKday 日本チケットを開く',
-      sourceNote: 'チケット提供元: KKday Japan Attraction Tickets (affiliate)'
+      openKkdayTickets: 'KKday 日本チケットを開く',
+      openKkdayTransfer: 'KKday 送迎サービスを開く',
+      ticketSourceNote: 'チケット提供元: KKday Japan Attraction Tickets (affiliate)',
+      transferSourceNote: '送迎提供元: KKday Transport & Car (affiliate)',
+      transferCategories: {
+        all: 'すべて',
+        rental: 'レンタル',
+        airport: '空港送迎',
+        card: 'カード',
+        bus: 'バス',
+        train: '電車',
+        ferry: 'フェリー',
+        bike: '自転車レンタル',
+        car: 'レンタカー',
+        flight: 'フライト'
+      }
     }
   } as const;
   const cp = copyByLang[language];
-  const categories = [t.categories.all, t.categories.themePark, t.categories.museum, t.categories.observatory, t.categories.experience];
-  const [activeCat, setActiveCat] = useState(t.categories.all);
+  type TicketPanel = 'tickets' | 'transfer';
+  type TicketItem = {
+    name: string;
+    priceJpy: number;
+    icon: string;
+    cat: string;
+    rating: number;
+    image: string;
+    slug: string;
+  };
+
+  const ticketCategories = [t.categories.all, t.categories.themePark, t.categories.museum, t.categories.observatory, t.categories.experience];
+  const transferCategories = [
+    cp.transferCategories.all,
+    cp.transferCategories.rental,
+    cp.transferCategories.airport,
+    cp.transferCategories.card,
+    cp.transferCategories.bus,
+    cp.transferCategories.train,
+    cp.transferCategories.ferry,
+    cp.transferCategories.bike,
+    cp.transferCategories.car,
+    cp.transferCategories.flight
+  ];
+
+  const [panelType, setPanelType] = useState<TicketPanel>('tickets');
+  const [activeTicketCat, setActiveTicketCat] = useState<string>(ticketCategories[0]);
+  const [activeTransferCat, setActiveTransferCat] = useState<string>(transferCategories[0]);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc'>('popular');
   const [priceBand, setPriceBand] = useState<'all' | 'budget' | 'mid' | 'premium'>('all');
   const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
   const ticketAffiliateSlug = 'kkday-jp-attraction-tickets';
+  const transferAffiliateSlug = 'kkday-jp-transfer-services';
+
+  useEffect(() => {
+    setActiveTicketCat(ticketCategories[0]);
+    setActiveTransferCat(transferCategories[0]);
+  }, [language]);
 
   const getBrandedLink = (slug: string) => {
     if (typeof window === 'undefined') return `/go/${slug}`;
@@ -858,7 +938,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
     return `${new Intl.NumberFormat(locale).format(priceJpy)} JPY`;
   };
 
-  const tickets = [
+  const tickets: TicketItem[] = [
     { 
       name: 'Tokyo Disneyland', 
       priceJpy: 8400,
@@ -933,9 +1013,109 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
     }
   ];
 
-  const filteredByCategory = activeCat === t.categories.all
-    ? tickets
-    : tickets.filter((item) => item.cat === activeCat);
+  const transferServices: TicketItem[] = [
+    {
+      name: 'Tokyo Airport Private Transfer',
+      priceJpy: 7500,
+      icon: '🚐',
+      cat: cp.transferCategories.airport,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/transfer-airport-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Osaka Kansai Airport Pickup',
+      priceJpy: 6900,
+      icon: '🛬',
+      cat: cp.transferCategories.airport,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/transfer-airport-2/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'JR Pass / Rail Pass Deals',
+      priceJpy: 4800,
+      icon: '🎫',
+      cat: cp.transferCategories.card,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/transfer-card-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Tokyo Bus Pass & Route Cards',
+      priceJpy: 2600,
+      icon: '🚌',
+      cat: cp.transferCategories.bus,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/transfer-bus-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Shinkansen + Reserved Seat Packages',
+      priceJpy: 9800,
+      icon: '🚄',
+      cat: cp.transferCategories.train,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/transfer-train-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Japan Ferry Short Routes',
+      priceJpy: 4200,
+      icon: '⛴️',
+      cat: cp.transferCategories.ferry,
+      rating: 4.4,
+      image: 'https://picsum.photos/seed/transfer-ferry-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Kyoto Bike Rental City Pass',
+      priceJpy: 1800,
+      icon: '🚲',
+      cat: cp.transferCategories.bike,
+      rating: 4.5,
+      image: 'https://picsum.photos/seed/transfer-bike-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Hokkaido Car Rental Daily Deals',
+      priceJpy: 8200,
+      icon: '🚗',
+      cat: cp.transferCategories.car,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/transfer-car-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Domestic Flight + Transit Bundle',
+      priceJpy: 12800,
+      icon: '✈️',
+      cat: cp.transferCategories.flight,
+      rating: 4.3,
+      image: 'https://picsum.photos/seed/transfer-flight-1/400/250',
+      slug: transferAffiliateSlug
+    },
+    {
+      name: 'Regional Car/Van Charter',
+      priceJpy: 11500,
+      icon: '🚘',
+      cat: cp.transferCategories.rental,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/transfer-rental-1/400/250',
+      slug: transferAffiliateSlug
+    }
+  ];
+
+  const currentCategories = panelType === 'tickets' ? ticketCategories : transferCategories;
+  const activeCat = panelType === 'tickets' ? activeTicketCat : activeTransferCat;
+  const currentItems = panelType === 'tickets' ? tickets : transferServices;
+  const currentAffiliateSlug = panelType === 'tickets' ? ticketAffiliateSlug : transferAffiliateSlug;
+  const sourceNote = panelType === 'tickets' ? cp.ticketSourceNote : cp.transferSourceNote;
+  const sourceButtonLabel = panelType === 'tickets' ? cp.openKkdayTickets : cp.openKkdayTransfer;
+
+  const filteredByCategory = activeCat === currentCategories[0]
+    ? currentItems
+    : currentItems.filter((item) => item.cat === activeCat);
 
   const filteredByPrice = filteredByCategory.filter((item) => {
     if (priceBand === 'budget') return item.priceJpy <= 3000;
@@ -972,91 +1152,133 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
           </button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-          {categories.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setActiveCat(cat)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                activeCat === cat 
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{cp.sortLabel}</span>
+        <div className="flex gap-2 mb-5">
           <button
-            onClick={() => setSortBy('popular')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
-              sortBy === 'popular'
+            onClick={() => setPanelType('tickets')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              panelType === 'tickets'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
             }`}
           >
-            {cp.sortPopular}
+            {cp.panelTickets}
           </button>
           <button
-            onClick={() => setSortBy('price-asc')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
-              sortBy === 'price-asc'
+            onClick={() => setPanelType('transfer')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              panelType === 'transfer'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
             }`}
           >
-            {cp.sortPriceAsc}
-          </button>
-          <button
-            onClick={() => setSortBy('price-desc')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
-              sortBy === 'price-desc'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
-            }`}
-          >
-            {cp.sortPriceDesc}
+            {cp.panelTransfer}
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{cp.priceFilterLabel}</span>
-          {[
-            { id: 'all', label: cp.priceAll },
-            { id: 'budget', label: cp.priceBudget },
-            { id: 'mid', label: cp.priceMid },
-            { id: 'premium', label: cp.priceHigh }
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setPriceBand(item.id as 'all' | 'budget' | 'mid' | 'premium')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
-                priceBand === item.id
-                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-5 mb-6">
+          <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50/70 dark:bg-stone-800/50 p-3 space-y-2">
+            {currentCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => {
+                  if (panelType === 'tickets') {
+                    setActiveTicketCat(cat);
+                  } else {
+                    setActiveTransferCat(cat);
+                  }
+                }}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-colors ${
+                  activeCat === cat
+                    ? 'bg-cyan-500/20 text-cyan-900 dark:text-cyan-200'
+                    : 'hover:bg-white dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'
+                }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span className={`w-5 h-5 rounded-md flex items-center justify-center text-white ${activeCat === cat ? 'bg-cyan-500' : 'bg-cyan-400/80'}`}>
+                    <CheckCircle2 size={12} />
+                  </span>
+                  <span className="text-sm font-semibold">{cat}</span>
+                </span>
+                <ChevronRight size={16} className="text-stone-400" />
+              </button>
+            ))}
+          </div>
 
-        <div className="mb-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{cp.sourceNote}</p>
-          <button
-            onClick={() => openPartnerLink(ticketAffiliateSlug)}
-            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
-          >
-            {cp.openKkday}
-          </button>
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{cp.sortLabel}</span>
+              <button
+                onClick={() => setSortBy('popular')}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                  sortBy === 'popular'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                }`}
+              >
+                {cp.sortPopular}
+              </button>
+              <button
+                onClick={() => setSortBy('price-asc')}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                  sortBy === 'price-asc'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                }`}
+              >
+                {cp.sortPriceAsc}
+              </button>
+              <button
+                onClick={() => setSortBy('price-desc')}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                  sortBy === 'price-desc'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                }`}
+              >
+                {cp.sortPriceDesc}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{cp.priceFilterLabel}</span>
+              {[
+                { id: 'all', label: cp.priceAll },
+                { id: 'budget', label: cp.priceBudget },
+                { id: 'mid', label: cp.priceMid },
+                { id: 'premium', label: cp.priceHigh }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setPriceBand(item.id as 'all' | 'budget' | 'mid' | 'premium')}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                    priceBand === item.id
+                      ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+              <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{sourceNote}</p>
+              <button
+                onClick={() => openPartnerLink(currentAffiliateSlug)}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
+              >
+                {sourceButtonLabel}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {filtered.map((ticket, i) => (
-            <div key={i} className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col">
+            <button
+              key={i}
+              className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col text-left"
+            >
               <div className="relative h-40 overflow-hidden">
                 <img 
                   src={ticket.image} 
@@ -1102,7 +1324,7 @@ const TicketSearch = ({ onClose, language }: { onClose: () => void, language: La
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
         {filtered.length === 0 ? (
