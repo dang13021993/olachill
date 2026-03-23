@@ -1,0 +1,37 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - '$_IMAGE'
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '$_IMAGE'
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '$_SERVICE'
+      - --image
+      - '$_IMAGE'
+      - --region
+      - '$_REGION'
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --quiet
+
+images:
+  - '$_IMAGE'
+
+timeout: '1200s'
+
+substitutions:
+  _REGION: us-west1
+  _SERVICE: olachill-chuy-n-gia-du-l-ch-nh-t-b-n
+  _IMAGE: gcr.io/$PROJECT_ID/olachill:$COMMIT_SHA
