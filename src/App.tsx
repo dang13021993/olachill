@@ -2774,7 +2774,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
 
   // Suggested topics based on popular queries and AI strengths
   const suggestedTopics = t.suggestedTopics;
-  const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility);
+  const utilityTopics = suggestedTopics.filter((topic: any) => topic.utility && topic.utility !== 'coupons');
 
   const [activeUtility, setActiveUtility] = useState<null | 'train' | 'tickets' | 'esim' | 'coupons'>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
