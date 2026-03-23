@@ -242,6 +242,21 @@ function buildHistoryContext(history: Array<{ role: "user" | "model"; text: stri
     .join("\n");
 }
 
+function resolveProviderEndpoint(baseUrl: string, endpointOrUrl: string): URL {
+  const raw = String(endpointOrUrl || "").trim();
+  if (/^https?:\/\//i.test(raw)) {
+    return new URL(raw);
+  }
+  if (!raw) {
+    return new URL(baseUrl);
+  }
+  if (raw.startsWith("/")) {
+    return new URL(raw, baseUrl);
+  }
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return new URL(raw, normalizedBase);
+}
+
 async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] | null> {
   const baseUrl = process.env.ESIM_PROVIDER_BASE_URL;
   const apiKey = process.env.ESIM_PROVIDER_API_KEY;
@@ -249,7 +264,8 @@ async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] |
     return null;
   }
 
-  const url = new URL("/plans", baseUrl);
+  const plansEndpoint = process.env.ESIM_PROVIDER_PLANS_PATH || "plans";
+  const url = resolveProviderEndpoint(baseUrl, plansEndpoint);
   url.searchParams.set("country", country.toUpperCase());
   url.searchParams.set("limit", process.env.ESIM_PROVIDER_LIMIT || "200");
   url.searchParams.set("include", "all");
@@ -263,7 +279,7 @@ async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] |
   });
 
   if (!resp.ok) {
-    throw new Error(`eSIM provider plans error: ${resp.status}`);
+    throw new Error(`eSIM provider plans error: ${resp.status} endpoint=${url.pathname}`);
   }
 
   const json = await resp.json();
@@ -277,7 +293,8 @@ async function createEsimOrderWithProvider(planId: string, email?: string): Prom
     return null;
   }
 
-  const url = new URL("/orders", baseUrl);
+  const ordersEndpoint = process.env.ESIM_PROVIDER_ORDERS_PATH || "orders";
+  const url = resolveProviderEndpoint(baseUrl, ordersEndpoint);
   const resp = await fetch(url.toString(), {
     method: "POST",
     headers: {
@@ -292,7 +309,7 @@ async function createEsimOrderWithProvider(planId: string, email?: string): Prom
   });
 
   if (!resp.ok) {
-    throw new Error(`eSIM provider order error: ${resp.status}`);
+    throw new Error(`eSIM provider order error: ${resp.status} endpoint=${url.pathname}`);
   }
 
   const json: any = await resp.json();
