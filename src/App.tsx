@@ -191,9 +191,20 @@ const JAPAN_STATIONS_BY_CITY: Record<string, string[]> = {
   'Kawaguchiko': ['Kawaguchiko', 'Fujisan']
 };
 
+const JAPAN_STATIONS_BY_CITY_JA: Record<string, string[]> = {
+  '東京': ['東京', '東京テレポート', '東京ビッグサイト(ゆりかもめ)', 'とうきょうスカイツリー[業平橋]', '東京ディズニーランド', '東京ディズニーシー', '東京国際クルーズターミナル', '東京港竹芝客船ターミナル', '東京有明ＦＴ', '新門司港東京九州ＦＴ', '新宿', '渋谷', '上野', '品川', '池袋', '秋葉原', '浅草'],
+  '大阪': ['大阪', '新大阪', '難波', '梅田', '天王寺', '京橋', '心斎橋', '日本橋'],
+  '京都': ['京都', '祇園四条', '河原町', '嵐山', '伏見稲荷', '清水五条'],
+  '名古屋': ['名古屋', '金山', '栄', '大須観音', '名古屋港', '藤が丘'],
+  '横浜': ['横浜', '桜木町', 'みなとみらい', '新横浜', '元町・中華街'],
+  '福岡': ['博多', '天神', '中洲川端', '福岡空港']
+};
+
 const ALL_STATIONS = Array.from(new Set([
   ...Object.keys(JAPAN_STATIONS_BY_CITY),
   ...Object.values(JAPAN_STATIONS_BY_CITY).flat(),
+  ...Object.keys(JAPAN_STATIONS_BY_CITY_JA),
+  ...Object.values(JAPAN_STATIONS_BY_CITY_JA).flat(),
   '東京', '新宿', '渋谷', '上野', '品川', '池袋', '秋葉原', '浅草',
   '大阪', '難波', '梅田', '京都', '名古屋', '横浜', '博多', '福岡',
   '札幌', '広島', '奈良', '神戸', '鎌倉', '河口湖'
@@ -229,19 +240,37 @@ const TrainSearch = ({
     }
   }, [initialMode]);
 
+  const normalizeKeyword = (value: string) => value.trim().normalize('NFKC').toLowerCase();
+
   const getSuggestions = (val: string) => {
-    if (val.length === 0) return [];
-    
-    const searchVal = val.toLowerCase();
-    
-    // 1. Check if it's a city name
-    const matchingCity = Object.keys(JAPAN_STATIONS_BY_CITY).find(city => city.toLowerCase() === searchVal);
-    if (matchingCity) {
-      return JAPAN_STATIONS_BY_CITY[matchingCity];
+    if (val.trim().length === 0) return [];
+
+    const query = normalizeKeyword(val);
+
+    const matchingCityEn = Object.keys(JAPAN_STATIONS_BY_CITY).find((city) => normalizeKeyword(city) === query);
+    if (matchingCityEn) {
+      return JAPAN_STATIONS_BY_CITY[matchingCityEn].slice(0, 12);
     }
-    
-    // 2. Otherwise, filter all stations and cities
-    return ALL_STATIONS.filter(s => s.toLowerCase().includes(searchVal)).slice(0, 8);
+
+    const matchingCityJa = Object.keys(JAPAN_STATIONS_BY_CITY_JA).find((city) => normalizeKeyword(city) === query);
+    if (matchingCityJa) {
+      return JAPAN_STATIONS_BY_CITY_JA[matchingCityJa].slice(0, 12);
+    }
+
+    const startsWithMatches: string[] = [];
+    const containsMatches: string[] = [];
+
+    for (const station of ALL_STATIONS) {
+      const normalized = normalizeKeyword(station);
+      if (!normalized.includes(query)) continue;
+      if (normalized.startsWith(query)) {
+        startsWithMatches.push(station);
+      } else {
+        containsMatches.push(station);
+      }
+    }
+
+    return Array.from(new Set([...startsWithMatches, ...containsMatches])).slice(0, 12);
   };
 
   const handleFromChange = (val: string) => {
@@ -264,36 +293,6 @@ const TrainSearch = ({
     setSearching(false);
     setShowResults(true);
   };
-
-  const formatDateForJorudan = (rawDate: string) => {
-    const [yyyy, mm, dd] = rawDate.split('-');
-    if (!yyyy || !mm || !dd) return rawDate;
-    return `${dd}/${mm}/${yyyy}`;
-  };
-
-  const hasJapaneseInput = /[\u3040-\u30ff\u3400-\u9fff]/.test(`${from}${to}`);
-  const jorudanLocale = hasJapaneseInput ? 'ja' : language === 'ja' ? 'ja' : language === 'en' ? 'en' : 'vi';
-  const jorudanUrl =
-    `https://world.jorudan.co.jp/mln/${jorudanLocale}/?p=0&xpd=1` +
-    `&from=${encodeURIComponent(from)}` +
-    `&to=${encodeURIComponent(to)}` +
-    `&date=${encodeURIComponent(formatDateForJorudan(date))}` +
-    `&time=${encodeURIComponent(time)}` +
-    `&ft=0&ic=0&us=0&up=0&ut=0&nzm=0&sub_lang=nosub` +
-    `&estf=${encodeURIComponent(from)}` +
-    `&estt=${encodeURIComponent(to)}`;
-
-  const openJorudan = () => {
-    if (!from || !to) return;
-    window.open(jorudanUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  const openJorudanLabel =
-    language === 'vi'
-      ? 'Mở Jorudan chính thức'
-      : language === 'ja'
-        ? 'Jorudan公式で確認'
-        : 'Open Official Jorudan';
 
   return (
     <motion.div 
@@ -411,21 +410,12 @@ const TrainSearch = ({
             {searching ? <Loader2 className="animate-spin" /> : null}
             {t.searchRoute}
           </button>
-          <button
-            type="button"
-            onClick={openJorudan}
-            disabled={!from || !to}
-            className="w-full border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 py-3 rounded-2xl text-sm font-bold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
-          >
-            {openJorudanLabel}
-          </button>
         </form>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-4 px-2 gap-2">
             <p className="text-sm font-medium text-stone-500">{t.resultsFor}: <span className="text-stone-900 dark:text-white font-bold">{from} → {to}</span></p>
             <div className="flex items-center gap-2">
-              <button onClick={openJorudan} className="text-xs text-blue-600 font-bold hover:underline whitespace-nowrap">{openJorudanLabel}</button>
               <button onClick={() => setShowResults(false)} className="text-xs text-blue-600 font-bold hover:underline whitespace-nowrap">{t.changeSearch}</button>
             </div>
           </div>

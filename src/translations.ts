@@ -151,14 +151,13 @@ export const translations = {
     },
     suggestedTopics: [
       { text: 'Train Search', description: 'Check routes & prices', utility: 'train', icon: '🚄' },
-      { text: 'Sightseeing Tickets', description: 'Book Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
+      { text: 'Activities', description: 'Book Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIM Data', description: 'Buy Japan eSIM quickly', utility: 'esim', icon: '📶' },
       { text: 'Coupon Deals', description: 'Klook & KKday affiliate offers', utility: 'coupons', icon: '🏷️' },
-      { text: 'Tokyo Stations', description: 'Major train stations in Tokyo', query: 'List major train stations in Tokyo and their features', icon: '🚉' },
-      { text: 'Nagoya Parking', description: 'Cheap and convenient parking in Nagoya', query: 'Cheap and convenient parking in Nagoya', icon: '🅿️' },
-      { text: 'Kimono in Osaka', description: 'Best rental shops in Osaka', query: 'Best kimono rental shops in Osaka', icon: '👘' },
-      { text: 'Today\'s Events', description: 'Festivals and events happening today', query: 'What festivals or events are happening today in Japan?', icon: '📅' },
-      { text: 'Tickets & Transport', description: 'Shinkansen prices and car rental info', query: 'Shinkansen ticket prices and car rental guide in Japan', icon: '🎫' }
+      { text: 'JR Pass Japan Deals', description: 'Discount JR Pass options for Japan trips', slug: 'kkday-jp-jr-pass', icon: '🚆' },
+      { text: 'Japan Rail Tickets', description: 'Compare train tickets and transport passes', slug: 'kkday-jp-rail-tickets', icon: '🎫' },
+      { text: 'Kimono Experience', description: 'Browse cultural kimono activities in Japan', slug: 'kkday-jp-kimono-experience', icon: '👘' },
+      { text: 'Hot Shopping Coupons', description: 'Scan QR for hottest shopping deals in Japan', slug: 'kkday-jp-hot-shopping-coupon', qrOnly: true, icon: '🔥' }
     ]
   },
   ja: {
@@ -303,14 +302,13 @@ export const translations = {
     },
     suggestedTopics: [
       { text: '乗換案内', description: 'ルートと料金を確認', utility: 'train', icon: '🚄' },
-      { text: '観光チケット', description: 'ディズニー、USJなどを予約', utility: 'tickets', icon: '🎟️' },
+      { text: 'アクティビティ', description: 'ディズニー、USJなどを予約', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIMデータ', description: '日本のeSIMを購入', utility: 'esim', icon: '📶' },
       { text: 'クーポン', description: 'Klook・KKdayの提携オファー', utility: 'coupons', icon: '🏷️' },
-      { text: '東京の駅', description: '東京の主要な駅と特徴', query: '東京の主要な駅とその特徴を教えてください', icon: '🚉' },
-      { text: '名古屋の駐車場', description: '名古屋の安くて便利な駐車場', query: '名古屋の安くて便利な駐車場', icon: '🅿️' },
-      { text: '大阪の着物', description: 'おすすめのレンタル店', query: '大阪でおすすめの着物レンタル店', icon: '👘' },
-      { text: '今日のイベント', description: '今日開催されているお祭りやイベント', query: '今日日本で開催されているお祭りやイベントは何ですか？', icon: '📅' },
-      { text: 'チケットと交通', description: '新幹線の料金とレンタカー情報', query: '日本の新幹線料金とレンタカーのガイド', icon: '🎫' }
+      { text: 'JRパス割引', description: '日本旅行向けJRパスの特集', slug: 'kkday-jp-jr-pass', icon: '🚆' },
+      { text: '日本の鉄道チケット', description: '鉄道チケットと交通パスを比較', slug: 'kkday-jp-rail-tickets', icon: '🎫' },
+      { text: '着物体験', description: '日本の着物文化体験を一覧で確認', slug: 'kkday-jp-kimono-experience', icon: '👘' },
+      { text: '注目ショッピングクーポン', description: 'QRで日本の人気クーポンをチェック', slug: 'kkday-jp-hot-shopping-coupon', qrOnly: true, icon: '🔥' }
     ]
   },
   vi: {
@@ -455,14 +453,13 @@ export const translations = {
     },
     suggestedTopics: [
       { text: 'Tra tàu', description: 'Kiểm tra lộ trình & giá vé', utility: 'train', icon: '🚄' },
-      { text: 'Vé tham quan', description: 'Đặt vé Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
+      { text: 'Hoạt động giải trí', description: 'Đặt vé Disneyland, USJ...', utility: 'tickets', icon: '🎟️' },
       { text: 'eSIM du lịch', description: 'Mua eSIM Nhật Bản nhanh', utility: 'esim', icon: '📶' },
       { text: 'Mã giảm giá', description: 'Ưu đãi tiếp thị liên kết Klook & KKday', utility: 'coupons', icon: '🏷️' },
-      { text: 'Ga tàu Tokyo', description: 'Các ga tàu lớn và đặc điểm tại Tokyo', query: 'Danh sách các ga tàu lớn ở Tokyo và đặc điểm của chúng', icon: '🚉' },
-      { text: 'Bãi đỗ xe Nagoya', description: 'Tìm kiếm bãi đỗ xe thuận tiện và các điểm vui chơi tại Nagoya.', query: 'Tìm kiếm bãi đỗ xe thuận tiện và các điểm vui chơi tại Nagoya.', icon: '🅿️' },
-      { text: 'Kimono ở Osaka', description: 'Trải nghiệm mặc Kimono truyền thống tại các cửa hàng uy tín ở Osaka.', query: 'Tiệm cho thuê kimono tốt nhất ở Osaka', icon: '👘' },
-      { text: 'Sự kiện hôm nay', description: 'Cập nhật các lễ hội và sự kiện đặc sắc đang diễn ra tại Nhật Bản.', query: 'Hôm nay ở Nhật Bản có lễ hội hay sự kiện gì đặc sắc không?', icon: '📅' },
-      { text: 'Vé & Di chuyển', description: 'Thông tin giá vé Shinkansen và hướng dẫn thuê xe tự lái.', query: 'Thông tin giá vé Shinkansen và hướng dẫn thuê xe tự lái.', icon: '🎫' }
+      { text: 'Vé giảm giá JR Pass Nhật Bản', description: 'Xem các gói JR Pass ưu đãi cho hành trình Nhật Bản.', slug: 'kkday-jp-jr-pass', icon: '🚆' },
+      { text: 'Vé tàu Nhật Bản', description: 'Danh sách vé tàu và thẻ đi lại Nhật Bản giá tốt.', slug: 'kkday-jp-rail-tickets', icon: '🎫' },
+      { text: 'Trải nghiệm Kimono', description: 'Danh sách trải nghiệm văn hóa Kimono để khách lựa chọn.', slug: 'kkday-jp-kimono-experience', icon: '👘' },
+      { text: 'Mã giảm giá mua sắm cực hot', description: 'Quét mã QR để nhận ưu đãi mua sắm Nhật Bản.', slug: 'kkday-jp-hot-shopping-coupon', qrOnly: true, icon: '🔥' }
     ]
   }
 };
