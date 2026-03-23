@@ -2038,17 +2038,17 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
           <p className="text-sm text-stone-500">{copy.noPlans}</p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className="rounded-3xl border border-sky-100 dark:border-sky-900/30 overflow-hidden bg-gradient-to-b from-sky-50/80 to-white dark:from-sky-950/30 dark:to-stone-900 shadow-[0_8px_30px_rgba(14,116,144,0.12)]"
+              className="h-full rounded-3xl border border-sky-100 dark:border-sky-900/30 overflow-hidden bg-gradient-to-b from-sky-50/80 to-white dark:from-sky-950/30 dark:to-stone-900 shadow-[0_8px_30px_rgba(14,116,144,0.12)] flex flex-col"
             >
               <div className="bg-sky-500 dark:bg-sky-700 px-5 py-3">
                 <p className="text-white font-black tracking-wide text-sm">{copy.heroBadge}</p>
               </div>
-              <div className="p-5 sm:p-6">
-                <h4 className="text-xl sm:text-2xl font-black text-sky-900 dark:text-sky-200 leading-tight">
+              <div className="p-5 sm:p-6 flex flex-col h-full">
+                <h4 className="text-lg sm:text-xl font-black text-sky-900 dark:text-sky-200 leading-tight">
                   {plan.name} - {plan.validityDays} {copy.day}
                 </h4>
 
@@ -2080,7 +2080,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-3xl sm:text-4xl font-black text-sky-900 dark:text-sky-100">
+                      <p className="text-2xl sm:text-3xl font-black text-sky-900 dark:text-sky-100">
                         ¥{formatNumber(toDisplayJpy(plan))}
                       </p>
                       <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
@@ -2093,12 +2093,12 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                       ) : null}
                     </div>
                   </div>
-                  {plan.description ? (
-                    <p className="mt-3 text-xs sm:text-sm text-stone-600 dark:text-stone-300">{plan.description}</p>
-                  ) : null}
+                {plan.description ? (
+                  <p className="mt-3 text-xs sm:text-sm text-stone-600 dark:text-stone-300">{plan.description}</p>
+                ) : null}
                 </div>
 
-                <div className="mt-5 space-y-2">
+                <div className="mt-5 space-y-2 mt-auto">
                   <button
                     onClick={() => openPaymentSheet(plan)}
                     disabled={loadingPlanId === plan.id || (!providerConfigured && !plan.checkoutUrl)}
