@@ -1711,7 +1711,7 @@ interface EsimPlan {
   features?: string[];
 }
 
-type EsimPaymentMethod = 'stripe' | 'paypal' | 'bank_transfer';
+type EsimPaymentMethod = 'paypay' | 'stripe' | 'paypal' | 'bank_transfer';
 
 const EsimShop = ({ onClose, language }: { onClose: () => void; language: Language }) => {
   const copyByLang = {
@@ -1743,6 +1743,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       totalAmount: 'Tổng số tiền',
       packageLabel: 'Gói',
       selectMethod: 'Chọn phương thức thanh toán',
+      methodPaypay: 'PayPay (Ví/QR Nhật Bản)',
       methodStripe: 'Stripe (Card/Apple Pay)',
       methodPaypal: 'PayPal',
       methodBank: 'Chuyển khoản ngân hàng (Nhật Bản)',
@@ -1779,6 +1780,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       totalAmount: 'Total Amount',
       packageLabel: 'Package',
       selectMethod: 'Choose payment method',
+      methodPaypay: 'PayPay (Japan wallet/QR)',
       methodStripe: 'Stripe (Card/Apple Pay)',
       methodPaypal: 'PayPal',
       methodBank: 'Bank Transfer (Japan)',
@@ -1815,6 +1817,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       totalAmount: '合計金額',
       packageLabel: 'プラン',
       selectMethod: '支払い方法を選択',
+      methodPaypay: 'PayPay（日本のQRウォレット）',
       methodStripe: 'Stripe (カード/Apple Pay)',
       methodPaypal: 'PayPal',
       methodBank: '銀行振込（日本）',
@@ -1832,9 +1835,10 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
   const [providerConfigured, setProviderConfigured] = useState(true);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<EsimPlan | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<EsimPaymentMethod>('bank_transfer');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<EsimPaymentMethod>('paypay');
 
   const paymentMethods: { key: EsimPaymentMethod; label: string; icon: React.ReactNode }[] = [
+    { key: 'paypay', label: copy.methodPaypay, icon: <CreditCard size={20} /> },
     { key: 'stripe', label: copy.methodStripe, icon: <CreditCard size={20} /> },
     { key: 'paypal', label: copy.methodPaypal, icon: <CreditCard size={20} /> },
     { key: 'bank_transfer', label: copy.methodBank, icon: <Landmark size={20} /> }
@@ -1929,7 +1933,7 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       return;
     }
     setSelectedPlan(plan);
-    setSelectedPaymentMethod('bank_transfer');
+    setSelectedPaymentMethod('paypay');
   };
 
   const handleBuy = async (plan: EsimPlan, paymentMethod: EsimPaymentMethod): Promise<boolean> => {
@@ -2926,6 +2930,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       if (code === 'auth/operation-not-allowed') return 'Google Sign-In chưa bật trong Firebase Authentication.';
       if (code === 'auth/invalid-api-key') return 'Firebase API key không hợp lệ.';
       if (code === 'auth/network-request-failed') return 'Lỗi mạng khi đăng nhập. Vui lòng thử lại.';
+      if (code === 'auth/popup-blocked') return 'Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép popup rồi thử lại.';
+      if (code === 'auth/popup-closed-by-user') return 'Bạn đã đóng cửa sổ đăng nhập trước khi hoàn tất.';
       if (code === 'auth/invalid-continue-uri' || code === 'auth/invalid-action-code') return 'Liên kết đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng thử đăng nhập lại.';
       if (code === 'auth/invalid-oauth-client-id') return 'OAuth Client ID của Firebase/Google Sign-In đang sai cấu hình.';
       return 'Đăng nhập thất bại. Vui lòng thử lại.';
@@ -2935,6 +2941,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       if (code === 'auth/operation-not-allowed') return 'Firebase Authentication で Google ログインが有効化されていません。';
       if (code === 'auth/invalid-api-key') return 'Firebase API キーが無効です。';
       if (code === 'auth/network-request-failed') return 'ネットワークエラーのためログインできません。';
+      if (code === 'auth/popup-blocked') return 'ブラウザがログイン用ポップアップをブロックしました。許可して再試行してください。';
+      if (code === 'auth/popup-closed-by-user') return 'ログイン完了前にポップアップが閉じられました。';
       if (code === 'auth/invalid-continue-uri' || code === 'auth/invalid-action-code') return 'ログインリンクが無効または期限切れです。もう一度ログインしてください。';
       if (code === 'auth/invalid-oauth-client-id') return 'Firebase/Google Sign-In の OAuth Client ID 設定が正しくありません。';
       return 'ログインに失敗しました。再試行してください。';
@@ -2943,6 +2951,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     if (code === 'auth/operation-not-allowed') return 'Google Sign-In is not enabled in Firebase Authentication.';
     if (code === 'auth/invalid-api-key') return 'Invalid Firebase API key.';
     if (code === 'auth/network-request-failed') return 'Network error while signing in. Please try again.';
+    if (code === 'auth/popup-blocked') return 'Your browser blocked the login popup. Please allow popups and try again.';
+    if (code === 'auth/popup-closed-by-user') return 'Login popup was closed before sign-in completed.';
     if (code === 'auth/invalid-continue-uri' || code === 'auth/invalid-action-code') return 'Login link is invalid or expired. Please try signing in again.';
     if (code === 'auth/invalid-oauth-client-id') return 'Firebase/Google Sign-In OAuth client ID is misconfigured.';
     return 'Login failed. Please try again.';
@@ -2952,7 +2962,11 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     if (loginPending) return;
     setLoginPending(true);
     try {
-      await loginWithGoogle();
+      const loginUser = await loginWithGoogle();
+      if (loginUser) {
+        setUser(loginUser);
+        setAuthLoading(false);
+      }
     } catch (error) {
       console.error('Login failed:', error);
       alert(getLoginErrorMessage(error));
@@ -2961,11 +2975,18 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   };
 
   useEffect(() => {
-    consumeRedirectLoginResult().catch((error) => {
-      if (loginAlertShownRef.current) return;
-      loginAlertShownRef.current = true;
-      alert(getLoginErrorMessage(error));
-    });
+    consumeRedirectLoginResult()
+      .then((redirectUser) => {
+        if (redirectUser) {
+          setUser(redirectUser);
+          setAuthLoading(false);
+        }
+      })
+      .catch((error) => {
+        if (loginAlertShownRef.current) return;
+        loginAlertShownRef.current = true;
+        alert(getLoginErrorMessage(error));
+      });
   }, [language]);
 
   // Auth Listener

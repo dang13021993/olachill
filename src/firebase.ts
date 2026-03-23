@@ -3,6 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   signOut,
   onAuthStateChanged,
@@ -23,6 +24,9 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 let persistencePromise: Promise<void> | null = null;
+type PersistenceMode = 'local' | 'session' | 'memory' | 'unknown';
+let persistenceMode: PersistenceMode = 'unknown';
+const REDIRECT_PENDING_KEY = 'olachill_auth_redirect_pending';
 
 const ensureAuthPersistence = async () => {
   if (persistencePromise) {
@@ -32,6 +36,7 @@ const ensureAuthPersistence = async () => {
   persistencePromise = (async () => {
     try {
       await setPersistence(auth, browserLocalPersistence);
+      persistenceMode = 'local';
       return;
     } catch (localErr) {
       console.warn('Failed to set local auth persistence, fallback to session:', localErr);
@@ -39,12 +44,14 @@ const ensureAuthPersistence = async () => {
 
     try {
       await setPersistence(auth, browserSessionPersistence);
+      persistenceMode = 'session';
       return;
     } catch (sessionErr) {
       console.warn('Failed to set session auth persistence, fallback to memory:', sessionErr);
     }
 
     await setPersistence(auth, inMemoryPersistence);
+    persistenceMode = 'memory';
   })();
 
   return persistencePromise;
@@ -55,13 +62,51 @@ void ensureAuthPersistence();
 // Auth Helpers
 export const loginWithGoogle = async () => {
   await ensureAuthPersistence();
-  // Force redirect flow on all platforms for maximum compatibility.
-  // This avoids popup callback issues seen on some desktop/mobile browsers.
-  await signInWithRedirect(auth, googleProvider);
-  return null;
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
+
+  const runRedirectFlow = async () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
+    }
+    await signInWithRedirect(auth, googleProvider);
+    return null;
+  };
+
+  // Redirect needs persisted storage across navigation. If we only have memory,
+  // prefer popup flow to keep the auth state on the current page.
+  const shouldPreferPopup = persistenceMode === 'memory' || !isMobile;
+
+  if (shouldPreferPopup) {
+    try {
+      const popupResult = await signInWithPopup(auth, googleProvider);
+      return popupResult?.user || null;
+    } catch (popupError: any) {
+      const code = String(popupError?.code || '');
+      const canFallbackToRedirect =
+        code === 'auth/popup-blocked' ||
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        code === 'auth/operation-not-supported-in-this-environment';
+
+      if (canFallbackToRedirect && persistenceMode !== 'memory') {
+        return runRedirectFlow();
+      }
+      throw popupError;
+    }
+  }
+
+  return runRedirectFlow();
 };
 
 export const consumeRedirectLoginResult = async () => {
+  if (typeof window !== 'undefined') {
+    const pending = sessionStorage.getItem(REDIRECT_PENDING_KEY);
+    if (pending !== '1') {
+      return null;
+    }
+  }
+
   await ensureAuthPersistence();
   try {
     const result = await getRedirectResult(auth);
@@ -69,6 +114,10 @@ export const consumeRedirectLoginResult = async () => {
   } catch (error) {
     console.error("Redirect result error:", error);
     throw error;
+  } finally {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+    }
   }
 };
 
