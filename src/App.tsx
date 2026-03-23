@@ -1070,6 +1070,16 @@ interface EsimPlan {
   priceUsd: number;
   currency: string;
   checkoutUrl?: string;
+  providerName?: string;
+  network?: string;
+  speed?: string;
+  coverage?: string;
+  description?: string;
+  basePriceJpy?: number;
+  displayPriceJpy?: number;
+  priceDiffJpy?: number;
+  discountRate?: number;
+  features?: string[];
 }
 
 type EsimPaymentMethod = 'stripe' | 'paypal' | 'bank_transfer';
@@ -1084,6 +1094,15 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       loading: 'Đang tải gói eSIM...',
       noPlans: 'Chưa có gói eSIM phù hợp.',
       day: 'ngày',
+      heroBadge: '4G Japan eSIMs',
+      instantDelivery: 'Giao eSIM số tức thì - kích hoạt trong vài phút',
+      reliableCoverage: 'Phủ sóng ổn định khắp Nhật Bản',
+      dataOnly: 'Chỉ dữ liệu (không thoại/SMS)',
+      stayConnected: 'Giữ kết nối trong {days} ngày',
+      basePrice: 'Giá gốc',
+      sellPrice: 'Giá bán',
+      priceGap: 'Chênh lệch',
+      provider: 'Nhà cung cấp',
       sourceProvider: 'Nguồn: nhà cung cấp',
       sourceFallback: 'Nguồn: fallback local',
       checkoutMissing: 'Gói này chưa có link thanh toán từ nhà cung cấp.',
@@ -1107,6 +1126,15 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       loading: 'Loading eSIM plans...',
       noPlans: 'No matching eSIM plans.',
       day: 'days',
+      heroBadge: '4G Japan eSIMs',
+      instantDelivery: 'Instant digital delivery - ready in minutes',
+      reliableCoverage: 'Reliable coverage across Japan',
+      dataOnly: 'Data only (no voice/SMS)',
+      stayConnected: 'Stay connected for {days} days',
+      basePrice: 'Base Price',
+      sellPrice: 'Sell Price',
+      priceGap: 'Gap',
+      provider: 'Provider',
       sourceProvider: 'Source: provider',
       sourceFallback: 'Source: local fallback',
       checkoutMissing: 'This plan does not include a checkout URL yet.',
@@ -1130,6 +1158,15 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
       loading: 'eSIMプランを読み込み中...',
       noPlans: '利用可能なeSIMプランがありません。',
       day: '日',
+      heroBadge: '4G Japan eSIMs',
+      instantDelivery: 'デジタル即時配信 - 数分で利用開始',
+      reliableCoverage: '日本全国で安定した通信',
+      dataOnly: 'データ通信専用（音声/SMSなし）',
+      stayConnected: '{days}日間つながる',
+      basePrice: '元価格',
+      sellPrice: '販売価格',
+      priceGap: '差額',
+      provider: '提供元',
       sourceProvider: 'ソース: プロバイダー',
       sourceFallback: 'ソース: ローカルフォールバック',
       checkoutMissing: 'このプランには決済URLがありません。',
@@ -1161,9 +1198,40 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
     { key: 'bank_transfer', label: copy.methodBank, icon: <Landmark size={20} /> }
   ];
 
-  const toJpy = (plan: EsimPlan) => {
+  const toBaseJpy = (plan: EsimPlan) => {
+    if (typeof plan.basePriceJpy === 'number' && Number.isFinite(plan.basePriceJpy)) {
+      return Math.round(plan.basePriceJpy);
+    }
     if (plan.currency.toUpperCase() === 'JPY') return Math.round(plan.priceUsd);
     return Math.round(plan.priceUsd * 150);
+  };
+
+  const toDisplayJpy = (plan: EsimPlan) => {
+    if (typeof plan.displayPriceJpy === 'number' && Number.isFinite(plan.displayPriceJpy)) {
+      return Math.round(plan.displayPriceJpy);
+    }
+    return toBaseJpy(plan);
+  };
+
+  const toPriceGapJpy = (plan: EsimPlan) => {
+    if (typeof plan.priceDiffJpy === 'number' && Number.isFinite(plan.priceDiffJpy)) {
+      return Math.max(0, Math.round(plan.priceDiffJpy));
+    }
+    return Math.max(0, toDisplayJpy(plan) - toBaseJpy(plan));
+  };
+
+  const getPlanHighlights = (plan: EsimPlan): string[] => {
+    const providerHighlights = Array.isArray(plan.features)
+      ? plan.features.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+    const defaults = [
+      copy.dataOnly,
+      copy.instantDelivery,
+      copy.reliableCoverage,
+      copy.stayConnected.replace('{days}', String(plan.validityDays))
+    ];
+    const combined = [...providerHighlights, ...defaults];
+    return Array.from(new Set(combined)).slice(0, 4);
   };
 
   const formatNumber = (value: number) => {
@@ -1290,24 +1358,77 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
           <p className="text-sm text-stone-500">{copy.noPlans}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-5">
           {plans.map((plan) => (
-            <div key={plan.id} className="rounded-2xl border border-stone-100 dark:border-stone-700 p-5 bg-stone-50 dark:bg-stone-800/50">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-teal-600 dark:text-teal-400 mb-1">{plan.country}</p>
-              <h4 className="font-bold text-stone-900 dark:text-white">{plan.name}</h4>
-              <div className="mt-3 space-y-1 text-sm text-stone-500 dark:text-stone-400">
-                <p><span className="font-bold text-stone-700 dark:text-stone-200">{plan.data}</span></p>
-                <p>{plan.validityDays} {copy.day}</p>
-                <p className="font-mono font-bold text-stone-900 dark:text-white">${plan.priceUsd.toFixed(2)} {plan.currency}</p>
+            <div
+              key={plan.id}
+              className="rounded-3xl border border-sky-100 dark:border-sky-900/30 overflow-hidden bg-gradient-to-b from-sky-50/80 to-white dark:from-sky-950/30 dark:to-stone-900 shadow-[0_8px_30px_rgba(14,116,144,0.12)]"
+            >
+              <div className="bg-sky-500 dark:bg-sky-700 px-5 py-3">
+                <p className="text-white font-black tracking-wide text-sm">{copy.heroBadge}</p>
               </div>
-              <button
-                onClick={() => openPaymentSheet(plan)}
-                disabled={loadingPlanId === plan.id}
-                className="mt-4 w-full bg-teal-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loadingPlanId === plan.id ? <Loader2 className="animate-spin w-4 h-4" /> : null}
-                {copy.buy}
-              </button>
+              <div className="p-5 sm:p-6">
+                <h4 className="text-xl sm:text-2xl font-black text-sky-900 dark:text-sky-200 leading-tight">
+                  {plan.name} - {plan.validityDays} {copy.day}
+                </h4>
+
+                <ul className="mt-5 space-y-2.5 text-sm sm:text-base text-stone-700 dark:text-stone-200">
+                  {getPlanHighlights(plan).map((line) => (
+                    <li key={line} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 text-emerald-500">
+                        <CheckCircle2 size={18} />
+                      </span>
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6 rounded-2xl bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-900/40 p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-16 h-16 rounded-2xl bg-white dark:bg-stone-900 border border-sky-200 dark:border-sky-700 flex items-center justify-center text-sky-600 dark:text-sky-300">
+                        <Smartphone size={30} />
+                      </div>
+                      <div>
+                        <p className="text-2xl sm:text-3xl font-black text-sky-900 dark:text-sky-100">{plan.data}</p>
+                        <p className="text-sm sm:text-base text-stone-600 dark:text-stone-300">{plan.validityDays} {copy.day}</p>
+                        {plan.providerName ? (
+                          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                            {copy.provider}: <span className="font-semibold">{plan.providerName}</span>
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-3xl sm:text-4xl font-black text-sky-900 dark:text-sky-100">
+                        ¥{formatNumber(toDisplayJpy(plan))}
+                      </p>
+                      <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                        {copy.basePrice}: <span className="line-through">¥{formatNumber(toBaseJpy(plan))}</span>
+                      </p>
+                      {toPriceGapJpy(plan) > 0 ? (
+                        <p className="text-xs mt-1 inline-flex px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold">
+                          +¥{formatNumber(toPriceGapJpy(plan))} {copy.priceGap}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  {plan.description ? (
+                    <p className="mt-3 text-xs sm:text-sm text-stone-600 dark:text-stone-300">{plan.description}</p>
+                  ) : null}
+                </div>
+
+                <div className="mt-5 space-y-2">
+                  <button
+                    onClick={() => openPaymentSheet(plan)}
+                    disabled={loadingPlanId === plan.id}
+                    className="w-full bg-emerald-500 text-white py-3.5 rounded-2xl text-base sm:text-lg font-black hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loadingPlanId === plan.id ? <Loader2 className="animate-spin w-4 h-4" /> : null}
+                    {copy.buy}
+                  </button>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -1361,10 +1482,18 @@ const EsimShop = ({ onClose, language }: { onClose: () => void; language: Langua
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl sm:text-5xl font-black text-stone-900 dark:text-white">{formatNumber(toJpy(selectedPlan))} JPY</p>
+                    <p className="text-3xl sm:text-5xl font-black text-stone-900 dark:text-white">{formatNumber(toDisplayJpy(selectedPlan))} JPY</p>
                     <p className="text-xs text-stone-400 dark:text-stone-500 mt-2">
                       {copy.estimatedLabel}: {selectedPlan.priceUsd.toFixed(2)} {selectedPlan.currency}
                     </p>
+                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
+                      {copy.basePrice}: {formatNumber(toBaseJpy(selectedPlan))} JPY
+                    </p>
+                    {toPriceGapJpy(selectedPlan) > 0 ? (
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                        +{formatNumber(toPriceGapJpy(selectedPlan))} JPY {copy.priceGap}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>

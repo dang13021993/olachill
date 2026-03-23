@@ -14,6 +14,16 @@ interface EsimPlan {
   priceUsd: number;
   currency: string;
   checkoutUrl?: string;
+  providerName?: string;
+  network?: string;
+  speed?: string;
+  coverage?: string;
+  description?: string;
+  basePriceJpy?: number;
+  displayPriceJpy?: number;
+  priceDiffJpy?: number;
+  discountRate?: number;
+  features?: string[];
 }
 
 const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
@@ -86,6 +96,59 @@ function getPartnerLinks(): PartnerLinkMap {
   };
 }
 
+function toNum(value: unknown): number | null {
+  const v = Number(value);
+  return Number.isFinite(v) ? v : null;
+}
+
+function convertToJpy(amount: number, currency: string): number {
+  const jpyRate = Number(process.env.ESIM_JPY_EXCHANGE_RATE || 150);
+  if (currency.toUpperCase() === "JPY") {
+    return amount;
+  }
+  return amount * (Number.isFinite(jpyRate) && jpyRate > 0 ? jpyRate : 150);
+}
+
+function applyEsimMarkup(baseJpy: number): { final: number; diff: number } {
+  const markupPercent = Number(process.env.ESIM_MARKUP_PERCENT || 0);
+  const markupJpy = Number(process.env.ESIM_MARKUP_JPY || 0);
+  const roundStep = Number(process.env.ESIM_PRICE_ROUND_STEP_JPY || 10);
+  const safeRoundStep = Number.isFinite(roundStep) && roundStep > 0 ? roundStep : 10;
+  const safePercent = Number.isFinite(markupPercent) ? markupPercent : 0;
+  const safeMarkupJpy = Number.isFinite(markupJpy) ? markupJpy : 0;
+  const rawFinal = baseJpy * (1 + safePercent / 100) + safeMarkupJpy;
+  const final = Math.max(baseJpy, Math.ceil(rawFinal / safeRoundStep) * safeRoundStep);
+  return {
+    final,
+    diff: Math.max(0, final - baseJpy)
+  };
+}
+
+function deriveFeatureList(plan: any): string[] {
+  const featureCandidates = Array.isArray(plan?.features)
+    ? plan.features
+    : Array.isArray(plan?.highlights)
+      ? plan.highlights
+      : Array.isArray(plan?.benefits)
+        ? plan.benefits
+        : [];
+
+  const mapped = featureCandidates
+    .map((f: any) => (typeof f === "string" ? f : typeof f?.title === "string" ? f.title : ""))
+    .map((f: string) => f.trim())
+    .filter(Boolean);
+
+  if (mapped.length > 0) {
+    return mapped.slice(0, 6);
+  }
+
+  return [
+    "Data only (no voice/SMS)",
+    "Instant digital delivery",
+    "Reliable coverage in Japan"
+  ];
+}
+
 function normalizeEsimPlans(payload: any): EsimPlan[] {
   if (!payload) {
     return [];
@@ -100,13 +163,40 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
       const country = String(plan.country || plan.countryCode || "JP").trim().toUpperCase();
       const data = String(plan.data || plan.dataAllowance || "N/A").trim();
       const validityDays = Number(plan.validityDays || plan.validity || plan.days || 0);
-      const priceUsd = Number(plan.priceUsd || plan.price || 0);
+      const priceUsd = Number(plan.priceUsd || plan.price || plan.amount || plan.salePrice || 0);
       const currency = String(plan.currency || "USD").trim().toUpperCase();
       const checkoutUrl = typeof plan.checkoutUrl === "string" ? plan.checkoutUrl : undefined;
+      const providerName = typeof plan.providerName === "string" ? plan.providerName : typeof plan.provider === "string" ? plan.provider : undefined;
+      const network = typeof plan.network === "string" ? plan.network : undefined;
+      const speed = typeof plan.speed === "string" ? plan.speed : undefined;
+      const coverage = typeof plan.coverage === "string" ? plan.coverage : typeof plan.region === "string" ? plan.region : undefined;
+      const description = typeof plan.description === "string" ? plan.description : undefined;
 
       if (!id || !name || !country || !data || !Number.isFinite(validityDays) || !Number.isFinite(priceUsd)) {
         return null;
       }
+
+      const providerBaseAmount =
+        toNum(plan.basePrice) ??
+        toNum(plan.originalPrice) ??
+        toNum(plan.listPrice) ??
+        toNum(plan.compareAtPrice) ??
+        priceUsd;
+      const originalAmount = providerBaseAmount ?? priceUsd;
+      const originalJpy = Math.round(convertToJpy(originalAmount, currency));
+      const saleJpyFromProvider =
+        toNum(plan.salePriceJpy) ??
+        toNum(plan.displayPriceJpy) ??
+        toNum(plan.salePrice) ??
+        toNum(plan.priceJpy);
+      const saleJpyComputed = saleJpyFromProvider !== null
+        ? Math.round(convertToJpy(saleJpyFromProvider, currency))
+        : applyEsimMarkup(originalJpy).final;
+      const saleJpy = Math.max(originalJpy, saleJpyComputed);
+      const diffJpy = Math.max(0, saleJpy - originalJpy);
+      const discountRate = originalJpy > 0
+        ? Math.min(99, Math.max(0, Math.round((diffJpy / originalJpy) * 100)))
+        : 0;
 
       return {
         id,
@@ -116,7 +206,17 @@ function normalizeEsimPlans(payload: any): EsimPlan[] {
         validityDays,
         priceUsd,
         currency,
-        checkoutUrl
+        checkoutUrl,
+        providerName,
+        network,
+        speed,
+        coverage,
+        description,
+        basePriceJpy: originalJpy,
+        displayPriceJpy: saleJpy,
+        priceDiffJpy: diffJpy,
+        discountRate,
+        features: deriveFeatureList(plan)
       } satisfies EsimPlan;
     })
     .filter(Boolean) as EsimPlan[];
@@ -131,6 +231,8 @@ async function fetchEsimPlansFromProvider(country: string): Promise<EsimPlan[] |
 
   const url = new URL("/plans", baseUrl);
   url.searchParams.set("country", country.toUpperCase());
+  url.searchParams.set("limit", process.env.ESIM_PROVIDER_LIMIT || "200");
+  url.searchParams.set("include", "all");
 
   const resp = await fetch(url.toString(), {
     method: "GET",
@@ -197,7 +299,8 @@ async function startServer() {
   app.get("/api/public-config", (_req, res) => {
     res.json({
       checkoutBasicUrl: process.env.CHECKOUT_BASIC_URL || process.env.VITE_CHECKOUT_BASIC_URL || "",
-      checkoutProUrl: process.env.CHECKOUT_PRO_URL || process.env.VITE_CHECKOUT_PRO_URL || ""
+      checkoutProUrl: process.env.CHECKOUT_PRO_URL || process.env.VITE_CHECKOUT_PRO_URL || "",
+      checkoutUltraUrl: process.env.CHECKOUT_ULTRA_URL || process.env.VITE_CHECKOUT_ULTRA_URL || ""
     });
   });
 
