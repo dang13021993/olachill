@@ -159,7 +159,7 @@ export const translations = {
       { text: 'JR Pass Japan Deals', description: 'Discount JR Pass options for Japan trips', slug: 'kkday-jp-jr-pass', icon: '🚆' },
       { text: 'Japan Rail Tickets', description: 'Compare train tickets and transport passes', slug: 'kkday-jp-rail-tickets', icon: '🎫' },
       { text: 'Kimono Experience', description: 'Browse cultural kimono activities in Japan', slug: 'kkday-jp-kimono-experience', icon: '👘' },
-      { text: 'Hot Shopping Coupons', description: 'Scan QR for hottest shopping deals in Japan', slug: 'kkday-jp-hot-shopping-coupon', qrOnly: true, icon: '🔥' }
+      { text: 'Hot Shopping Coupons', description: 'Scan QR for hottest shopping deals in Japan', slug: 'kkday-jp-hot-shopping-coupon', icon: '🔥' }
     ]
   },
   ja: {
@@ -310,7 +310,7 @@ export const translations = {
       { text: 'JRパス割引', description: '日本旅行向けJRパスの特集', slug: 'kkday-jp-jr-pass', icon: '🚆' },
       { text: '日本の鉄道チケット', description: '鉄道チケットと交通パスを比較', slug: 'kkday-jp-rail-tickets', icon: '🎫' },
       { text: '着物体験', description: '日本の着物文化体験を一覧で確認', slug: 'kkday-jp-kimono-experience', icon: '👘' },
-      { text: '注目ショッピングクーポン', description: 'QRで日本の人気クーポンをチェック', slug: 'kkday-jp-hot-shopping-coupon', qrOnly: true, icon: '🔥' }
+      { text: '注目ショッピングクーポン', description: 'QRで日本の人気クーポンをチェック', slug: 'kkday-jp-hot-shopping-coupon', icon: '🔥' }
     ]
   },
   vi: {
@@ -461,7 +461,7 @@ export const translations = {
       { text: 'Vé giảm giá JR Pass Nhật Bản', description: 'Xem các gói JR Pass ưu đãi cho hành trình Nhật Bản.', slug: 'kkday-jp-jr-pass', icon: '🚆' },
       { text: 'Vé tàu Nhật Bản', description: 'Danh sách vé tàu và thẻ đi lại Nhật Bản giá tốt.', slug: 'kkday-jp-rail-tickets', icon: '🎫' },
       { text: 'Trải nghiệm Kimono', description: 'Danh sách trải nghiệm văn hóa Kimono để khách lựa chọn.', slug: 'kkday-jp-kimono-experience', icon: '👘' },
-      { text: 'Mã giảm giá mua sắm cực hot', description: 'Quét mã QR để nhận ưu đãi mua sắm Nhật Bản.', slug: 'kkday-jp-hot-shopping-coupon', qrOnly: true, icon: '🔥' }
+      { text: 'Mã giảm giá mua sắm cực hot', description: 'Quét mã QR để nhận ưu đãi mua sắm Nhật Bản.', slug: 'kkday-jp-hot-shopping-coupon', icon: '🔥' }
     ]
   }
 };
