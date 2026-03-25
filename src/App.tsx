@@ -1207,7 +1207,7 @@ const TicketSearch = ({
   const [selectedPrivateCarCity, setSelectedPrivateCarCity] = useState<string>('all');
   const [privateCarKeyword, setPrivateCarKeyword] = useState<string>('');
   const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
-  const ticketAffiliateSlug = 'kkday-jp-amusement-parks';
+  const ticketAffiliateSlug = 'kkday-jp-attraction-tickets';
   const jrPassAffiliateSlug = 'kkday-jp-jr-pass';
   const kimonoAffiliateSlug = 'kkday-jp-kimono-experience';
   const parkAffiliateSlug = 'kkday-jp-amusement-parks';
@@ -1748,9 +1748,9 @@ const TicketSearch = ({
     tickets: {
       categories: ticketCategories,
       activeCat: activeTicketCat,
-      items: parkTickets,
+      items: tickets,
       slug: ticketAffiliateSlug,
-      sourceNote: cp.parksSourceNote
+      sourceNote: cp.ticketSourceNote
     },
     jrpass: {
       categories: jrPassCategories,
@@ -4227,10 +4227,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       openUtilityPanel(topic.utility as UtilityType);
       return;
     }
-    if (topic.slug && topic.qrOnly) {
-      setTopicQrTicket({ text: topic.text, slug: topic.slug });
-      return;
-    }
     if (topic.slug) {
       const mappedUtility = affiliateTopicUtilityMap[topic.slug];
       if (mappedUtility === 'tickets') {
@@ -4239,6 +4235,10 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
       }
       if (mappedUtility === 'coupons') {
         openUtilityPanel('coupons');
+        return;
+      }
+      if (topic.qrOnly) {
+        setTopicQrTicket({ text: topic.text, slug: topic.slug });
         return;
       }
       openAffiliateSlug(topic.slug);
@@ -5465,20 +5465,21 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
             >
                 {!isUtilityFullscreen ? (
                 <>
-                  <div className="hidden md:block mb-5">
-                    <div className="relative h-[122px] max-w-[620px] mx-auto">
+                  <div className="hidden md:block mb-6">
+                    <div className="relative h-[152px] max-w-[900px] mx-auto px-3">
+                      <div className="pointer-events-none absolute left-1/2 top-[18px] h-[116px] w-[82%] -translate-x-1/2 rounded-t-[999px] border-t-2 border-fuchsia-400/70" />
                       {nonUtilityTopics.slice(0, 4).map((topic, index) => {
                         const positions = [
-                          'left-[2%] top-[66px]',
-                          'left-[24%] top-[6px]',
-                          'right-[24%] top-[6px]',
-                          'right-[2%] top-[66px]'
+                          'left-[2%] top-[88px]',
+                          'left-[27%] top-[20px]',
+                          'right-[27%] top-[20px]',
+                          'right-[2%] top-[88px]'
                         ];
                         return (
                           <button
                             key={topic.text}
                             onClick={() => handleSuggestedTopicClick(topic)}
-                            className={`absolute ${positions[index] || positions[0]} inline-flex max-w-[220px] items-center gap-2 rounded-full border border-stone-200 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 px-4 py-2 text-[13px] font-semibold text-stone-700 dark:text-stone-200 shadow-sm hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors`}
+                            className={`absolute ${positions[index] || positions[0]} inline-flex max-w-[245px] items-center gap-2 rounded-full border border-stone-200 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 px-4 py-2 text-[13px] font-semibold text-stone-700 dark:text-stone-200 shadow-sm hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors`}
                             title={topic.text}
                           >
                             <span className="text-base leading-none shrink-0">{topic.icon || '✨'}</span>
@@ -5538,13 +5539,14 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                     <div className="md:hidden w-full max-w-[430px] mx-auto">
                       <div className="rounded-[34px] bg-white/80 dark:bg-stone-900/80 border border-stone-100 dark:border-stone-800 shadow-2xl shadow-stone-100/80 dark:shadow-none px-5 py-7">
                         <div className="mb-4">
-                          <div className="relative h-[120px] max-w-[320px] mx-auto">
+                          <div className="relative h-[132px] max-w-[320px] mx-auto">
+                            <div className="pointer-events-none absolute left-1/2 top-[20px] h-[92px] w-[88%] -translate-x-1/2 rounded-t-[999px] border-t border-fuchsia-400/60" />
                             {nonUtilityTopics.slice(0, 4).map((topic, index) => {
                               const positions = [
-                                'left-0 top-[56px]',
-                                'left-[14%] top-0',
-                                'right-[14%] top-0',
-                                'right-0 top-[56px]'
+                                'left-[1%] top-[74px]',
+                                'left-[17%] top-[18px]',
+                                'right-[17%] top-[18px]',
+                                'right-[1%] top-[74px]'
                               ];
                               return (
                                 <button
