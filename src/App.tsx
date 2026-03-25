@@ -86,7 +86,7 @@ interface SavedSession {
   timestamp: number;
 }
 
-type TicketPanelType = 'tickets' | 'parks' | 'bus' | 'transfer' | 'privatecar' | 'food';
+type TicketPanelType = 'tickets' | 'parks' | 'bus' | 'transfer' | 'privatecar' | 'food' | 'kimono' | 'jrpass';
 type UtilityType = 'train' | 'tickets' | 'esim' | 'coupons';
 
 // --- Components ---
@@ -878,6 +878,8 @@ const TicketSearch = ({
   const copyByLang = {
     vi: {
       panelTickets: 'Hoạt động giải trí',
+      panelJrPass: 'Vé JR Pass',
+      panelKimono: 'Trải nghiệm Kimono',
       panelParks: 'Vé công viên',
       panelCheapBus: 'Xe khách siêu rẻ',
       panelTransfer: 'Dịch vụ đưa đón',
@@ -898,12 +900,29 @@ const TicketSearch = ({
       openKkdayTransfer: 'Mở dịch vụ đưa đón KKday',
       openKkdayPrivateCar: 'Mở thuê xe riêng KKday',
       openKkdayFood: 'Mở ẩm thực KKday',
+      partnerOpenOnBuy: 'Link đối tác chỉ mở khi bấm "Mua ngay".',
       ticketSourceNote: 'Nguồn vé: KKday Japan Attraction Tickets (affiliate)',
+      jrPassSourceNote: 'Nguồn JR Pass: KKday Japan Rail JR Pass (affiliate)',
+      kimonoSourceNote: 'Nguồn Kimono: KKday Japan Cultural Experiences (affiliate)',
       parksSourceNote: 'Nguồn vé công viên: KKday Japan Amusement Parks (affiliate)',
       busSourceNote: 'Nguồn xe khách: KKday Transportation Japan (affiliate)',
       transferSourceNote: 'Nguồn dịch vụ đưa đón: KKday Transport & Car (affiliate)',
       privateCarSourceNote: 'Nguồn thuê xe riêng: KKday Private Car Charter (affiliate)',
       foodSourceNote: 'Nguồn ẩm thực: KKday Restaurants (affiliate)',
+      jrPassCategories: {
+        all: 'Tất cả',
+        regional: 'Theo khu vực',
+        nationwide: 'Toàn quốc',
+        trainPass: 'Rail Pass',
+        transfer: 'Combo di chuyển'
+      },
+      kimonoCategories: {
+        all: 'Tất cả',
+        kyoto: 'Kyoto',
+        tokyo: 'Tokyo',
+        osaka: 'Osaka',
+        photo: 'Chụp ảnh'
+      },
       transferCategories: {
         all: 'Tất cả',
         rental: 'Xe thuê',
@@ -943,6 +962,8 @@ const TicketSearch = ({
     },
     en: {
       panelTickets: 'Activities',
+      panelJrPass: 'JR Pass Deals',
+      panelKimono: 'Kimono Experience',
       panelParks: 'Amusement Parks',
       panelCheapBus: 'Cheap Bus',
       panelTransfer: 'Transport Services',
@@ -963,12 +984,29 @@ const TicketSearch = ({
       openKkdayTransfer: 'Open KKday Transport Services',
       openKkdayPrivateCar: 'Open KKday Private Car',
       openKkdayFood: 'Open KKday Restaurants',
+      partnerOpenOnBuy: 'Partner links open only when you click "Buy now".',
       ticketSourceNote: 'Ticket source: KKday Japan Attraction Tickets (affiliate)',
+      jrPassSourceNote: 'JR Pass source: KKday Japan Rail JR Pass (affiliate)',
+      kimonoSourceNote: 'Kimono source: KKday Japan Cultural Experiences (affiliate)',
       parksSourceNote: 'Parks source: KKday Japan Amusement Parks (affiliate)',
       busSourceNote: 'Bus source: KKday Transportation Japan (affiliate)',
       transferSourceNote: 'Transport source: KKday Transport & Car (affiliate)',
       privateCarSourceNote: 'Private car source: KKday Private Car Charter (affiliate)',
       foodSourceNote: 'Dining source: KKday Restaurants (affiliate)',
+      jrPassCategories: {
+        all: 'All',
+        regional: 'Regional',
+        nationwide: 'Nationwide',
+        trainPass: 'Rail Pass',
+        transfer: 'Transit Bundle'
+      },
+      kimonoCategories: {
+        all: 'All',
+        kyoto: 'Kyoto',
+        tokyo: 'Tokyo',
+        osaka: 'Osaka',
+        photo: 'Photo Shoot'
+      },
       transferCategories: {
         all: 'All',
         rental: 'Rental',
@@ -1008,6 +1046,8 @@ const TicketSearch = ({
     },
     ja: {
       panelTickets: 'アクティビティ',
+      panelJrPass: 'JRパス',
+      panelKimono: '着物体験',
       panelParks: '遊園地チケット',
       panelCheapBus: '格安バス',
       panelTransfer: '送迎サービス',
@@ -1028,12 +1068,29 @@ const TicketSearch = ({
       openKkdayTransfer: 'KKday 送迎サービスを開く',
       openKkdayPrivateCar: 'KKday 貸切チャーターを開く',
       openKkdayFood: 'KKday グルメを開く',
+      partnerOpenOnBuy: '提携リンクは「今すぐ購入」でのみ開きます。',
       ticketSourceNote: 'チケット提供元: KKday Japan Attraction Tickets (affiliate)',
+      jrPassSourceNote: 'JRパス提供元: KKday Japan Rail JR Pass (affiliate)',
+      kimonoSourceNote: '着物体験提供元: KKday Japan Cultural Experiences (affiliate)',
       parksSourceNote: '遊園地チケット提供元: KKday Japan Amusement Parks (affiliate)',
       busSourceNote: 'バス提供元: KKday Transportation Japan (affiliate)',
       transferSourceNote: '送迎提供元: KKday Transport & Car (affiliate)',
       privateCarSourceNote: '貸切車両提供元: KKday Private Car Charter (affiliate)',
       foodSourceNote: 'グルメ提供元: KKday Restaurants (affiliate)',
+      jrPassCategories: {
+        all: 'すべて',
+        regional: '地域別',
+        nationwide: '全国版',
+        trainPass: 'レールパス',
+        transfer: '移動セット'
+      },
+      kimonoCategories: {
+        all: 'すべて',
+        kyoto: '京都',
+        tokyo: '東京',
+        osaka: '大阪',
+        photo: '写真撮影'
+      },
       transferCategories: {
         all: 'すべて',
         rental: 'レンタル',
@@ -1081,9 +1138,24 @@ const TicketSearch = ({
     rating: number;
     image: string;
     slug: string;
+    city?: string;
   };
 
   const ticketCategories = [t.categories.all, t.categories.themePark, t.categories.museum, t.categories.observatory, t.categories.experience];
+  const jrPassCategories = [
+    cp.jrPassCategories.all,
+    cp.jrPassCategories.regional,
+    cp.jrPassCategories.nationwide,
+    cp.jrPassCategories.trainPass,
+    cp.jrPassCategories.transfer
+  ];
+  const kimonoCategories = [
+    cp.kimonoCategories.all,
+    cp.kimonoCategories.kyoto,
+    cp.kimonoCategories.tokyo,
+    cp.kimonoCategories.osaka,
+    cp.kimonoCategories.photo
+  ];
   const transferCategories = [
     cp.transferCategories.all,
     cp.transferCategories.rental,
@@ -1123,6 +1195,8 @@ const TicketSearch = ({
 
   const [panelType, setPanelType] = useState<TicketPanelType>(initialPanel);
   const [activeTicketCat, setActiveTicketCat] = useState<string>(ticketCategories[0]);
+  const [activeJrPassCat, setActiveJrPassCat] = useState<string>(jrPassCategories[0]);
+  const [activeKimonoCat, setActiveKimonoCat] = useState<string>(kimonoCategories[0]);
   const [activeParkCat, setActiveParkCat] = useState<string>(ticketCategories[0]);
   const [activeBusCat, setActiveBusCat] = useState<string>(busCategories[0]);
   const [activeTransferCat, setActiveTransferCat] = useState<string>(transferCategories[0]);
@@ -1130,21 +1204,29 @@ const TicketSearch = ({
   const [activeFoodCat, setActiveFoodCat] = useState<string>(foodCategories[0]);
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc'>('popular');
   const [priceBand, setPriceBand] = useState<'all' | 'budget' | 'mid' | 'premium'>('all');
+  const [selectedPrivateCarCity, setSelectedPrivateCarCity] = useState<string>('all');
+  const [privateCarKeyword, setPrivateCarKeyword] = useState<string>('');
   const [qrTicket, setQrTicket] = useState<{ name: string; slug: string } | null>(null);
-  const ticketAffiliateSlug = 'kkday-jp-attraction-tickets';
+  const ticketAffiliateSlug = 'kkday-jp-amusement-parks';
+  const jrPassAffiliateSlug = 'kkday-jp-jr-pass';
+  const kimonoAffiliateSlug = 'kkday-jp-kimono-experience';
   const parkAffiliateSlug = 'kkday-jp-amusement-parks';
-  const busAffiliateSlug = 'kkday-jp-cheap-bus';
+  const busAffiliateSlug = 'kkday-jp-cheap-bus-schedule';
   const transferAffiliateSlug = 'kkday-jp-transfer-services';
   const privateCarAffiliateSlug = 'kkday-jp-private-car';
   const foodAffiliateSlug = 'kkday-global-restaurants';
 
   useEffect(() => {
     setActiveTicketCat(ticketCategories[0]);
+    setActiveJrPassCat(jrPassCategories[0]);
+    setActiveKimonoCat(kimonoCategories[0]);
     setActiveParkCat(ticketCategories[0]);
     setActiveBusCat(busCategories[0]);
     setActiveTransferCat(transferCategories[0]);
     setActivePrivateCarCat(privateCarCategories[0]);
     setActiveFoodCat(foodCategories[0]);
+    setSelectedPrivateCarCity('all');
+    setPrivateCarKeyword('');
   }, [language]);
 
   useEffect(() => {
@@ -1237,6 +1319,120 @@ const TicketSearch = ({
       rating: 4.7,
       image: 'https://picsum.photos/seed/nara/400/250',
       slug: ticketAffiliateSlug
+    }
+  ];
+
+  const jrPassDeals: TicketItem[] = [
+    {
+      name: 'JR Pass Whole Japan (7 days)',
+      priceJpy: 50000,
+      icon: '🚄',
+      cat: cp.jrPassCategories.nationwide,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/jrpass-japan-7d/400/250',
+      slug: jrPassAffiliateSlug
+    },
+    {
+      name: 'JR Pass Whole Japan (14 days)',
+      priceJpy: 80000,
+      icon: '🇯🇵',
+      cat: cp.jrPassCategories.nationwide,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/jrpass-japan-14d/400/250',
+      slug: jrPassAffiliateSlug
+    },
+    {
+      name: 'JR Kansai Area Pass',
+      priceJpy: 6500,
+      icon: '🏯',
+      cat: cp.jrPassCategories.regional,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/jrpass-kansai/400/250',
+      slug: jrPassAffiliateSlug
+    },
+    {
+      name: 'JR Kyushu Rail Pass',
+      priceJpy: 12000,
+      icon: '🌋',
+      cat: cp.jrPassCategories.regional,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/jrpass-kyushu/400/250',
+      slug: jrPassAffiliateSlug
+    },
+    {
+      name: 'JR Hokkaido Rail Pass',
+      priceJpy: 18000,
+      icon: '❄️',
+      cat: cp.jrPassCategories.trainPass,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/jrpass-hokkaido/400/250',
+      slug: jrPassAffiliateSlug
+    },
+    {
+      name: 'JR East Pass (Tohoku)',
+      priceJpy: 20000,
+      icon: '🗾',
+      cat: cp.jrPassCategories.transfer,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/jrpass-east-tohoku/400/250',
+      slug: jrPassAffiliateSlug
+    }
+  ];
+
+  const kimonoExperiences: TicketItem[] = [
+    {
+      name: 'Kyoto Traditional Kimono Walk',
+      priceJpy: 4500,
+      icon: '👘',
+      cat: cp.kimonoCategories.kyoto,
+      rating: 4.9,
+      image: 'https://picsum.photos/seed/kimono-kyoto-1/400/250',
+      slug: kimonoAffiliateSlug
+    },
+    {
+      name: 'Gion Kimono + Hair Styling',
+      priceJpy: 6200,
+      icon: '🌸',
+      cat: cp.kimonoCategories.kyoto,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/kimono-kyoto-2/400/250',
+      slug: kimonoAffiliateSlug
+    },
+    {
+      name: 'Asakusa Kimono Rental',
+      priceJpy: 3900,
+      icon: '🗼',
+      cat: cp.kimonoCategories.tokyo,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/kimono-tokyo-1/400/250',
+      slug: kimonoAffiliateSlug
+    },
+    {
+      name: 'Tokyo Kimono Photo Session',
+      priceJpy: 7800,
+      icon: '📸',
+      cat: cp.kimonoCategories.photo,
+      rating: 4.8,
+      image: 'https://picsum.photos/seed/kimono-photo-1/400/250',
+      slug: kimonoAffiliateSlug
+    },
+    {
+      name: 'Osaka Kimono Culture Experience',
+      priceJpy: 4200,
+      icon: '🎎',
+      cat: cp.kimonoCategories.osaka,
+      rating: 4.6,
+      image: 'https://picsum.photos/seed/kimono-osaka-1/400/250',
+      slug: kimonoAffiliateSlug
+    },
+    {
+      name: 'Couple Kimono Premium Plan',
+      priceJpy: 9800,
+      icon: '💞',
+      cat: cp.kimonoCategories.photo,
+      rating: 4.7,
+      image: 'https://picsum.photos/seed/kimono-couple-1/400/250',
+      slug: kimonoAffiliateSlug
     }
   ];
 
@@ -1380,7 +1576,8 @@ const TicketSearch = ({
       cat: cp.privateCarCategories.charter,
       rating: 4.8,
       image: 'https://picsum.photos/seed/private-car-1/400/250',
-      slug: privateCarAffiliateSlug
+      slug: privateCarAffiliateSlug,
+      city: 'Tokyo'
     },
     {
       name: 'Narita/Haneda Airport Private Transfer',
@@ -1389,7 +1586,8 @@ const TicketSearch = ({
       cat: cp.privateCarCategories.airport,
       rating: 4.7,
       image: 'https://picsum.photos/seed/private-airport-1/400/250',
-      slug: privateCarAffiliateSlug
+      slug: privateCarAffiliateSlug,
+      city: 'Tokyo'
     },
     {
       name: 'Osaka/Kyoto City Private Ride',
@@ -1398,7 +1596,8 @@ const TicketSearch = ({
       cat: cp.privateCarCategories.city,
       rating: 4.6,
       image: 'https://picsum.photos/seed/private-city-1/400/250',
-      slug: privateCarAffiliateSlug
+      slug: privateCarAffiliateSlug,
+      city: 'Osaka'
     },
     {
       name: 'Tokyo ⇄ Fuji Intercity Charter',
@@ -1407,7 +1606,8 @@ const TicketSearch = ({
       cat: cp.privateCarCategories.intercity,
       rating: 4.9,
       image: 'https://picsum.photos/seed/private-intercity-1/400/250',
-      slug: privateCarAffiliateSlug
+      slug: privateCarAffiliateSlug,
+      city: 'Tokyo'
     },
     {
       name: 'Family Van with Child Seat',
@@ -1416,22 +1616,23 @@ const TicketSearch = ({
       cat: cp.privateCarCategories.family,
       rating: 4.7,
       image: 'https://picsum.photos/seed/private-family-1/400/250',
-      slug: privateCarAffiliateSlug
+      slug: privateCarAffiliateSlug,
+      city: 'Kyoto'
     }
   ];
 
   const cheapBusServices: TicketItem[] = [
     {
-      name: 'Narita Limousine Bus Ticket',
-      priceJpy: 3200,
+      name: 'Tokyo → Aomori Highway Bus',
+      priceJpy: 6900,
       icon: '🚌',
-      cat: cp.busCategories.airport,
+      cat: cp.busCategories.highway,
       rating: 4.7,
-      image: 'https://picsum.photos/seed/bus-airport-1/400/250',
+      image: 'https://picsum.photos/seed/bus-route-aomori-1/400/250',
       slug: busAffiliateSlug
     },
     {
-      name: 'Osaka ⇄ Kyoto Highway Bus',
+      name: 'Osaka ⇄ Kyoto Express Bus',
       priceJpy: 1800,
       icon: '🛣️',
       cat: cp.busCategories.highway,
@@ -1440,12 +1641,12 @@ const TicketSearch = ({
       slug: busAffiliateSlug
     },
     {
-      name: 'Tokyo City 24h Bus Pass',
-      priceJpy: 900,
+      name: 'Haneda/Narita Airport Bus',
+      priceJpy: 3200,
       icon: '🎫',
-      cat: cp.busCategories.pass,
+      cat: cp.busCategories.airport,
       rating: 4.5,
-      image: 'https://picsum.photos/seed/bus-pass-1/400/250',
+      image: 'https://picsum.photos/seed/bus-airport-1/400/250',
       slug: busAffiliateSlug
     },
     {
@@ -1455,6 +1656,15 @@ const TicketSearch = ({
       cat: cp.busCategories.night,
       rating: 4.8,
       image: 'https://picsum.photos/seed/bus-night-1/400/250',
+      slug: busAffiliateSlug
+    },
+    {
+      name: 'Tokyo City Day Bus Pass',
+      priceJpy: 900,
+      icon: '🏙️',
+      cat: cp.busCategories.pass,
+      rating: 4.5,
+      image: 'https://picsum.photos/seed/bus-pass-1/400/250',
       slug: busAffiliateSlug
     },
     {
@@ -1533,56 +1743,63 @@ const TicketSearch = ({
       items: TicketItem[];
       slug: string;
       sourceNote: string;
-      sourceButtonLabel: string;
     }
   > = {
     tickets: {
       categories: ticketCategories,
       activeCat: activeTicketCat,
-      items: tickets,
+      items: parkTickets,
       slug: ticketAffiliateSlug,
-      sourceNote: cp.ticketSourceNote,
-      sourceButtonLabel: cp.openKkdayTickets
+      sourceNote: cp.parksSourceNote
+    },
+    jrpass: {
+      categories: jrPassCategories,
+      activeCat: activeJrPassCat,
+      items: jrPassDeals,
+      slug: jrPassAffiliateSlug,
+      sourceNote: cp.jrPassSourceNote
+    },
+    kimono: {
+      categories: kimonoCategories,
+      activeCat: activeKimonoCat,
+      items: kimonoExperiences,
+      slug: kimonoAffiliateSlug,
+      sourceNote: cp.kimonoSourceNote
     },
     parks: {
       categories: ticketCategories,
       activeCat: activeParkCat,
       items: parkTickets,
       slug: parkAffiliateSlug,
-      sourceNote: cp.parksSourceNote,
-      sourceButtonLabel: cp.openKkdayParks
+      sourceNote: cp.parksSourceNote
     },
     bus: {
       categories: busCategories,
       activeCat: activeBusCat,
       items: cheapBusServices,
       slug: busAffiliateSlug,
-      sourceNote: cp.busSourceNote,
-      sourceButtonLabel: cp.openKkdayBus
+      sourceNote: cp.busSourceNote
     },
     transfer: {
       categories: transferCategories,
       activeCat: activeTransferCat,
       items: transferServices,
       slug: transferAffiliateSlug,
-      sourceNote: cp.transferSourceNote,
-      sourceButtonLabel: cp.openKkdayTransfer
+      sourceNote: cp.transferSourceNote
     },
     privatecar: {
       categories: privateCarCategories,
       activeCat: activePrivateCarCat,
       items: privateCarServices,
       slug: privateCarAffiliateSlug,
-      sourceNote: cp.privateCarSourceNote,
-      sourceButtonLabel: cp.openKkdayPrivateCar
+      sourceNote: cp.privateCarSourceNote
     },
     food: {
       categories: foodCategories,
       activeCat: activeFoodCat,
       items: foodExperiences,
       slug: foodAffiliateSlug,
-      sourceNote: cp.foodSourceNote,
-      sourceButtonLabel: cp.openKkdayFood
+      sourceNote: cp.foodSourceNote
     }
   };
 
@@ -1590,9 +1807,7 @@ const TicketSearch = ({
   const currentCategories = currentPanel.categories;
   const activeCat = currentPanel.activeCat;
   const currentItems = currentPanel.items;
-  const currentAffiliateSlug = currentPanel.slug;
   const sourceNote = currentPanel.sourceNote;
-  const sourceButtonLabel = currentPanel.sourceButtonLabel;
 
   const filteredByCategory = activeCat === currentCategories[0]
     ? currentItems
@@ -1605,7 +1820,27 @@ const TicketSearch = ({
     return true;
   });
 
-  const filtered = [...filteredByPrice].sort((a, b) => {
+  const privateCarCities = Array.from(
+    new Set(privateCarServices.map((item) => item.city).filter(Boolean) as string[])
+  );
+
+  const privateCarKeywordNorm = privateCarKeyword.trim().toLowerCase();
+  const filteredByCity =
+    panelType === 'privatecar'
+      ? filteredByPrice.filter((item) => {
+          const itemCity = item.city || '';
+          const cityMatch =
+            selectedPrivateCarCity === 'all' ||
+            itemCity.toLowerCase() === selectedPrivateCarCity.toLowerCase();
+          const keywordMatch =
+            privateCarKeywordNorm.length === 0 ||
+            itemCity.toLowerCase().includes(privateCarKeywordNorm) ||
+            item.name.toLowerCase().includes(privateCarKeywordNorm);
+          return cityMatch && keywordMatch;
+        })
+      : filteredByPrice;
+
+  const filtered = [...filteredByCity].sort((a, b) => {
     if (sortBy === 'price-asc') return a.priceJpy - b.priceJpy;
     if (sortBy === 'price-desc') return b.priceJpy - a.priceJpy;
     return b.rating - a.rating || a.priceJpy - b.priceJpy;
@@ -1708,6 +1943,10 @@ const TicketSearch = ({
                 onClick={() => {
                   if (panelType === 'tickets') {
                     setActiveTicketCat(cat);
+                  } else if (panelType === 'jrpass') {
+                    setActiveJrPassCat(cat);
+                  } else if (panelType === 'kimono') {
+                    setActiveKimonoCat(cat);
                   } else if (panelType === 'parks') {
                     setActiveParkCat(cat);
                   } else if (panelType === 'bus') {
@@ -1794,21 +2033,52 @@ const TicketSearch = ({
               ))}
             </div>
 
-            <div className="mb-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            {panelType === 'privatecar' ? (
+              <div className="mb-6 rounded-2xl border border-cyan-200 dark:border-cyan-800 bg-cyan-50/60 dark:bg-cyan-900/20 p-3 sm:p-4">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-cyan-700 dark:text-cyan-300 mb-3">
+                  {language === 'vi' ? 'Lọc theo thành phố' : language === 'ja' ? '都市で絞り込み' : 'Filter by city'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_220px] gap-2">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500" />
+                    <input
+                      value={privateCarKeyword}
+                      onChange={(e) => setPrivateCarKeyword(e.target.value)}
+                      placeholder={
+                        language === 'vi'
+                          ? 'Tìm nhanh: Tokyo, Osaka, Kyoto...'
+                          : language === 'ja'
+                            ? '都市名で検索: 東京・大阪・京都...'
+                            : 'Quick search: Tokyo, Osaka, Kyoto...'
+                      }
+                      className="w-full h-10 rounded-xl border border-cyan-200 dark:border-cyan-700 bg-white/90 dark:bg-stone-900 px-9 text-sm outline-none focus:ring-2 focus:ring-cyan-400/50"
+                    />
+                  </div>
+                  <select
+                    value={selectedPrivateCarCity}
+                    onChange={(e) => setSelectedPrivateCarCity(e.target.value)}
+                    className="h-10 rounded-xl border border-cyan-200 dark:border-cyan-700 bg-white/90 dark:bg-stone-900 px-3 text-sm outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  >
+                    <option value="all">{language === 'vi' ? 'Tất cả thành phố' : language === 'ja' ? 'すべての都市' : 'All cities'}</option>
+                    {privateCarCities.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mb-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 p-4">
               <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{sourceNote}</p>
-              <button
-                onClick={() => openPartnerLink(currentAffiliateSlug)}
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
-              >
-                {sourceButtonLabel}
-              </button>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filtered.map((ticket, i) => (
-            <button
+            <div
               key={i}
               className="group bg-white dark:bg-stone-800 rounded-2xl border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-xl transition-all flex flex-col text-left"
             >
@@ -1857,7 +2127,7 @@ const TicketSearch = ({
                   </div>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
         {filtered.length === 0 ? (
@@ -3578,6 +3848,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     'kkday-jp-kimono-experience': 'tickets',
     'kkday-jp-amusement-parks': 'tickets',
     'kkday-jp-cheap-bus': 'tickets',
+    'kkday-jp-cheap-bus-schedule': 'tickets',
     'kkday-jp-private-car': 'tickets',
     'kkday-jp-restaurants': 'tickets',
     'kkday-jp-hot-shopping-coupon': 'coupons'
@@ -3598,11 +3869,12 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
   const planStorageKey = 'olachill_plan';
   const questionUsageStorageKey = 'olachill_question_usage';
   const topicPanelBySlug: Partial<Record<string, TicketPanelType>> = {
-    'kkday-jp-jr-pass': 'transfer',
-    'kkday-jp-rail-tickets': 'tickets',
-    'kkday-jp-kimono-experience': 'tickets',
+    'kkday-jp-jr-pass': 'jrpass',
+    'kkday-jp-rail-tickets': 'transfer',
+    'kkday-jp-kimono-experience': 'kimono',
     'kkday-jp-amusement-parks': 'parks',
     'kkday-jp-cheap-bus': 'bus',
+    'kkday-jp-cheap-bus-schedule': 'bus',
     'kkday-jp-private-car': 'privatecar',
     'kkday-global-restaurants': 'food'
   };
