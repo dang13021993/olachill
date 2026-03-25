@@ -5203,13 +5203,38 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
               animate={{ opacity: 1, y: 0 }}
               className={`w-full px-1 sm:px-0 overflow-x-hidden ${isUtilityWideLayout ? 'max-w-full' : 'max-w-3xl mx-auto'}`}
             >
-              {!isUtilityFullscreen ? (
-                <h1 className="hidden md:block text-[clamp(2.25rem,4.7vw,3.7rem)] font-serif leading-[0.98] mb-4 dark:text-white break-words [overflow-wrap:anywhere]">
-                  {t.heroTitle}
-                  {t.heroSubtitle ? (
-                    <span className="block italic text-emerald-600 dark:text-emerald-400 mt-0 leading-[0.95]">{t.heroSubtitle}</span>
-                  ) : null}
-                </h1>
+                {!isUtilityFullscreen ? (
+                <>
+                  <div className="hidden md:block mb-5">
+                    <div className="relative h-[122px] max-w-[620px] mx-auto">
+                      {nonUtilityTopics.slice(0, 4).map((topic, index) => {
+                        const positions = [
+                          'left-[2%] top-[66px]',
+                          'left-[24%] top-[6px]',
+                          'right-[24%] top-[6px]',
+                          'right-[2%] top-[66px]'
+                        ];
+                        return (
+                          <button
+                            key={topic.text}
+                            onClick={() => handleSuggestedTopicClick(topic)}
+                            className={`absolute ${positions[index] || positions[0]} inline-flex max-w-[220px] items-center gap-2 rounded-full border border-stone-200 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 px-4 py-2 text-[13px] font-semibold text-stone-700 dark:text-stone-200 shadow-sm hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors`}
+                            title={topic.text}
+                          >
+                            <span className="text-base leading-none shrink-0">{topic.icon || '✨'}</span>
+                            <span className="truncate">{getTopicChipLabel(topic)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <h1 className="hidden md:block text-[clamp(2.25rem,4.7vw,3.7rem)] font-serif leading-[0.98] mb-4 dark:text-white break-words [overflow-wrap:anywhere]">
+                    {t.heroTitle}
+                    {t.heroSubtitle ? (
+                      <span className="block italic text-emerald-600 dark:text-emerald-400 mt-0 leading-[0.95]">{t.heroSubtitle}</span>
+                    ) : null}
+                  </h1>
+                </>
               ) : null}
 
               <AnimatePresence mode="wait">
@@ -5252,19 +5277,7 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                   >
                     <div className="md:hidden w-full max-w-[430px] mx-auto">
                       <div className="rounded-[34px] bg-white/80 dark:bg-stone-900/80 border border-stone-100 dark:border-stone-800 shadow-2xl shadow-stone-100/80 dark:shadow-none px-5 py-7">
-                        <h2 className="text-left text-[clamp(1.58rem,6.8vw,1.95rem)] leading-[1.03] font-black tracking-tight text-stone-900 dark:text-white mb-0.5 [overflow-wrap:anywhere]">
-                          {t.heroTitle}
-                        </h2>
-                        {t.heroSubtitle ? (
-                          <p className="text-left text-[clamp(1.08rem,5vw,1.35rem)] leading-[1.05] font-serif italic text-emerald-600 dark:text-emerald-400 mb-2 [overflow-wrap:anywhere]">
-                            {t.heroSubtitle}
-                          </p>
-                        ) : null}
-                        <p className="text-left text-stone-500 dark:text-stone-400 text-[13px] leading-[1.4] mb-4">
-                          {t.heroDescription}
-                        </p>
-
-                        <div className="mb-5">
+                        <div className="mb-4">
                           <div className="relative h-[120px] max-w-[320px] mx-auto">
                             {nonUtilityTopics.slice(0, 4).map((topic, index) => {
                               const positions = [
@@ -5287,6 +5300,17 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                             })}
                           </div>
                         </div>
+                        <h2 className="text-left text-[clamp(1.58rem,6.8vw,1.95rem)] leading-[1.03] font-black tracking-tight text-stone-900 dark:text-white mb-0.5 [overflow-wrap:anywhere]">
+                          {t.heroTitle}
+                        </h2>
+                        {t.heroSubtitle ? (
+                          <p className="text-left text-[clamp(1.08rem,5vw,1.35rem)] leading-[1.05] font-serif italic text-emerald-600 dark:text-emerald-400 mb-2 [overflow-wrap:anywhere]">
+                            {t.heroSubtitle}
+                          </p>
+                        ) : null}
+                        <p className="text-left text-stone-500 dark:text-stone-400 text-[13px] leading-[1.4] mb-4">
+                          {t.heroDescription}
+                        </p>
 
                         <div className="mb-5 grid grid-cols-3 gap-2">
                           {quickToolButtons.map((tool) => (
@@ -5367,24 +5391,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
                 )}
               </AnimatePresence>
               
-              {!isUtilityFullscreen ? (
-                <div className="hidden md:block w-full max-w-4xl mx-auto overflow-hidden">
-                  <p className="text-sm font-serif italic text-stone-400 dark:text-stone-500 mb-6 text-center">{t.popularTopics}</p>
-                  <div className="flex flex-wrap justify-center gap-3">
-                    {nonUtilityTopics.slice(0, 4).map((topic) => (
-                      <button
-                        key={topic.text}
-                        onClick={() => handleSuggestedTopicClick(topic)}
-                        className="inline-flex items-center gap-2.5 rounded-full border border-stone-200 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 px-5 py-3 text-sm font-semibold text-stone-700 dark:text-stone-200 shadow-sm hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                        title={topic.text}
-                      >
-                        <span className="text-lg leading-none">{topic.icon || '✨'}</span>
-                        <span>{getTopicChipLabel(topic)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </motion.div>
           </div>
         ) : (
