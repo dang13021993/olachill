@@ -1211,7 +1211,7 @@ const TicketSearch = ({
   const jrPassAffiliateSlug = 'kkday-jp-jr-pass';
   const kimonoAffiliateSlug = 'kkday-jp-kimono-experience';
   const parkAffiliateSlug = 'kkday-jp-amusement-parks';
-  const busAffiliateSlug = 'kkday-jp-cheap-bus-schedule';
+  const busAffiliateSlug = 'kkday-jp-cheap-bus';
   const transferAffiliateSlug = 'kkday-jp-transfer-services';
   const privateCarAffiliateSlug = 'kkday-jp-private-car';
   const foodAffiliateSlug = 'kkday-global-restaurants';
@@ -3848,9 +3848,8 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     'kkday-jp-kimono-experience': 'tickets',
     'kkday-jp-amusement-parks': 'tickets',
     'kkday-jp-cheap-bus': 'tickets',
-    'kkday-jp-cheap-bus-schedule': 'tickets',
     'kkday-jp-private-car': 'tickets',
-    'kkday-jp-restaurants': 'tickets',
+    'kkday-global-restaurants': 'tickets',
     'kkday-jp-hot-shopping-coupon': 'coupons'
   };
 
@@ -3874,7 +3873,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
     'kkday-jp-kimono-experience': 'kimono',
     'kkday-jp-amusement-parks': 'parks',
     'kkday-jp-cheap-bus': 'bus',
-    'kkday-jp-cheap-bus-schedule': 'bus',
     'kkday-jp-private-car': 'privatecar',
     'kkday-global-restaurants': 'food'
   };
