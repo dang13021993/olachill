@@ -16,7 +16,15 @@ type PartnerLinkMap = Record<string, string>;
 interface AffiliateCoupon {
   id: string;
   partner: string;
-  code: string;
+  title?: string;
+  category?: string;
+  code?: string;
+  discount?: string;
+  summary?: string;
+  howToUse?: string;
+  validity?: string;
+  locations?: string;
+  source?: string;
   slug: string;
   note?: string;
 }
@@ -67,6 +75,14 @@ const DEFAULT_PARTNER_LINKS: PartnerLinkMap = {
   "kkday-jp-rail-tickets": "https://www.kkday.com/vi/transportation/japan-rail?cid=24160&ud1=train",
   "kkday-jp-kimono-experience": "https://www.kkday.com/vi/category/jp-japan/cultural-experiences/list?cid=24160&ud1=kimono",
   "kkday-jp-hot-shopping-coupon": "https://www.kkday.com/vi/category/jp-japan/cultural-experiences/list?cid=24160&ud1=kimono",
+  "taxfree-coupon-home": "https://taxfreeshops.jp/en/tieup/coupon",
+  "taxfree-drugstore": "https://taxfreeshops.jp/en/tieup/18",
+  "taxfree-electronics": "https://taxfreeshops.jp/en/tieup/6",
+  "taxfree-department": "https://taxfreeshops.jp/en/tieup/5",
+  "taxfree-sports": "https://taxfreeshops.jp/en/tieup/11",
+  "taxfree-rentcar": "https://www.taxfreeshops.jp/en/tieup/15",
+  "taxfree-airport": "https://taxfreeshops.jp/en/tieup/8",
+  "taxfree-sim": "https://taxfreeshops.jp/en/tieup/coupon",
   "kkday-jp-transfer-services": "https://www.kkday.com/vi/product/productlist?destination=D-JP-3261,D-JP-3255,D-JP-3256,D-JP-3254,D-JP-3231,D-JP-3225,D-JP-3252,D-JP-3263,D-JP-3260,D-JP-3242,D-JP-3267,D-JP-3253,D-JP-3239,D-JP-3258,D-JP-3251,D-JP-3224,D-JP-3265,D-JP-3233,D-JP-3262,D-JP-3266,D-JP-3243,D-JP-3227,D-JP-3259,D-JP-3221,D-JP-3250,D-JP-3222,D-JP-3248,D-JP-3220,D-JP-3240,D-JP-3257,D-JP-3264,D-JP-3235,D-JP-3228,D-JP-3232,D-JP-3226,D-JP-3246,D-JP-3223,D-JP-3244,D-JP-3237,D-JP-3219,D-JP-3230,D-JP-3234,D-JP-3249,D-JP-3247,D-JP-3229,D-JP-3236,D-JP-3245,D-JP-3238&product_categories=CATEGORY_068,CATEGORY_069,CATEGORY_070,CATEGORY_071,CATEGORY_063,CATEGORY_064,CATEGORY_065,CATEGORY_059,CATEGORY_062,CATEGORY_060,CATEGORY_061,CATEGORY_067,CATEGORY_056,CATEGORY_058,CATEGORY_057,CATEGORY_066,CATEGORY_095,CATEGORY_072,CATEGORY_073,CATEGORY_074,CATEGORY_075,CATEGORY_077&currency=VND&sort=prec&page=1&count=10&cid=24160&ud1=car",
   "kkday-jp-private-car": "https://www.kkday.com/vi/product/productlist?destination=D-JP-3261,D-JP-3255,D-JP-3256,D-JP-3254,D-JP-3231,D-JP-3225,D-JP-3252,D-JP-3263,D-JP-3260,D-JP-3242,D-JP-3267,D-JP-3253,D-JP-3239,D-JP-3258,D-JP-3251,D-JP-3224,D-JP-3265,D-JP-3233,D-JP-3262,D-JP-3266,D-JP-3243,D-JP-3227,D-JP-3259,D-JP-3221,D-JP-3250,D-JP-3222,D-JP-3248,D-JP-3220,D-JP-3240,D-JP-3257,D-JP-3264,D-JP-3235,D-JP-3228,D-JP-3232,D-JP-3226,D-JP-3246,D-JP-3223,D-JP-3244,D-JP-3237,D-JP-3219,D-JP-3230,D-JP-3234,D-JP-3249,D-JP-3247,D-JP-3229,D-JP-3236,D-JP-3245,D-JP-3238&product_categories=CATEGORY_068&currency=VND&sort=prec&page=1&count=10&cid=24160&ud1=privatecar",
   "kkday-global-restaurants": "https://www.kkday.com/vi/category/global/restaurants/list?currency=VND&sort=prec&page=1&count=10&cid=24160&ud1=food"
@@ -160,11 +176,38 @@ function normalizeAffiliateCoupon(item: any): AffiliateCoupon | null {
     .toLowerCase();
   const partner = String(item?.partner || item?.name || item?.id || "").trim();
   const slug = String(item?.slug || id).trim().toLowerCase();
-  const code = String(item?.code || item?.voucher || item?.discountCode || "").trim();
+  const title =
+    typeof item?.title === "string" && item.title.trim()
+      ? item.title.trim()
+      : typeof item?.name === "string" && item.name.trim()
+        ? item.name.trim()
+        : partner;
+  const category = typeof item?.category === "string" && item.category.trim() ? item.category.trim() : undefined;
+  const code = String(item?.code || item?.voucher || item?.discountCode || "").trim() || undefined;
+  const discount = typeof item?.discount === "string" && item.discount.trim() ? item.discount.trim() : undefined;
+  const summary = typeof item?.summary === "string" && item.summary.trim() ? item.summary.trim() : undefined;
+  const howToUse = typeof item?.howToUse === "string" && item.howToUse.trim() ? item.howToUse.trim() : undefined;
+  const validity = typeof item?.validity === "string" && item.validity.trim() ? item.validity.trim() : undefined;
+  const locations = typeof item?.locations === "string" && item.locations.trim() ? item.locations.trim() : undefined;
+  const source = typeof item?.source === "string" && item.source.trim() ? item.source.trim() : undefined;
   const note = typeof item?.note === "string" ? item.note.trim() : undefined;
 
-  if (!id || !partner || !slug || !code) return null;
-  return { id, partner, slug, code, note } satisfies AffiliateCoupon;
+  if (!id || !partner || !slug) return null;
+  return {
+    id,
+    partner,
+    title,
+    category,
+    code,
+    discount,
+    summary,
+    howToUse,
+    validity,
+    locations,
+    source,
+    slug,
+    note
+  } satisfies AffiliateCoupon;
 }
 
 function parseAffiliateCouponsPayload(parsed: unknown): AffiliateCoupon[] {
@@ -224,6 +267,8 @@ function getSimplePartnerCouponsFromEnv(): AffiliateCoupon[] {
     out.push({
       id: "klook-main",
       partner: "Klook",
+      title: "Klook Promo Code",
+      category: "travel",
       code: klookCode,
       slug: "klook",
       note: "Main partner coupon code"
@@ -234,6 +279,8 @@ function getSimplePartnerCouponsFromEnv(): AffiliateCoupon[] {
     out.push({
       id: "kkday-main",
       partner: "KKday",
+      title: "KKday Promo Code",
+      category: "travel",
       code: kkdayCode,
       slug: "kkday",
       note: "Main partner coupon code"
@@ -260,8 +307,7 @@ function getAffiliateCoupons(): AffiliateCoupon[] {
     merged.set(item.id, item);
   }
 
-  return Array.from(merged.values())
-    .filter((item) => String(item.code || "").trim().length > 0);
+  return Array.from(merged.values());
 }
 
 function toNum(value: unknown): number | null {

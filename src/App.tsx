@@ -2187,7 +2187,15 @@ const TicketSearch = ({
 interface AffiliateCoupon {
   id: string;
   partner: string;
-  code: string;
+  title?: string;
+  category?: string;
+  code?: string;
+  discount?: string;
+  summary?: string;
+  howToUse?: string;
+  validity?: string;
+  locations?: string;
+  source?: string;
   slug: string;
   note?: string;
 }
@@ -2196,37 +2204,76 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
   const copyByLang = {
     vi: {
       title: 'Mã giảm giá đối tác',
-      subtitle: 'Mã ưu đãi tiếp thị liên kết',
-      codeLabel: 'Mã ưu đãi',
-      codeMissing: 'Đang dùng link ưu đãi trực tiếp (không cần mã).',
+      subtitle: 'Danh sách coupon + QR đầy đủ thông tin',
+      allCategories: 'Tất cả',
+      detailAndQr: 'Xem QR & chi tiết',
+      discountLabel: 'Ưu đãi',
+      summaryLabel: 'Thông tin',
+      howToUseLabel: 'Cách dùng',
+      validityLabel: 'Hiệu lực',
+      locationsLabel: 'Khu vực',
+      sourceLabel: 'Nguồn',
+      codeLabel: 'Mã giảm giá',
+      codeMissing: 'Ưu đãi áp dụng qua link đối tác (không cần nhập mã).',
       copyCode: 'Sao chép mã',
       copied: 'Đã sao chép',
-      openLink: 'Mở ưu đãi',
-      sourceNote: 'Link được mở qua thương hiệu Olachill (/go/...) để không lộ link gốc.',
+      openLink: 'Mua ngay',
+      close: 'Đóng',
+      noCoupon: 'Chưa có coupon trong danh mục này.',
+      qrTitle: 'Mã QR thương hiệu Olachill',
+      qrHint: 'Quét mã hoặc bấm "Mua ngay" để mở ưu đãi qua link ẩn.',
+      categoryLabel: 'Danh mục',
+      sourceNote: 'Tất cả link mở qua olachill.com/go/... để ẩn link gốc đối tác.',
       noteLabel: 'Lưu ý',
       copyPrompt: 'Không thể tự động sao chép. Hãy copy thủ công mã này:'
     },
     en: {
       title: 'Affiliate Coupons',
-      subtitle: 'Affiliate promo codes',
-      codeLabel: 'Promo code',
-      codeMissing: 'Direct partner offer link (no code required).',
+      subtitle: 'Full coupon list with QR details',
+      allCategories: 'All',
+      detailAndQr: 'View QR & details',
+      discountLabel: 'Discount',
+      summaryLabel: 'Summary',
+      howToUseLabel: 'How to use',
+      validityLabel: 'Validity',
+      locationsLabel: 'Locations',
+      sourceLabel: 'Source',
+      codeLabel: 'Coupon code',
+      codeMissing: 'Offer applied directly via partner link (no code needed).',
       copyCode: 'Copy code',
       copied: 'Copied',
-      openLink: 'Open deal',
-      sourceNote: 'Links are opened via Olachill branded route (/go/...) to hide raw affiliate URLs.',
+      openLink: 'Buy now',
+      close: 'Close',
+      noCoupon: 'No coupons in this category.',
+      qrTitle: 'Olachill branded QR',
+      qrHint: 'Scan QR or tap "Buy now" to open hidden affiliate link.',
+      categoryLabel: 'Category',
+      sourceNote: 'All links open through olachill.com/go/... to hide raw partner URLs.',
       noteLabel: 'Note',
       copyPrompt: 'Unable to auto-copy. Please copy this code manually:'
     },
     ja: {
       title: '提携クーポン',
-      subtitle: '提携プロモコード',
+      subtitle: 'QR付きクーポン一覧',
+      allCategories: 'すべて',
+      detailAndQr: 'QRと詳細を見る',
+      discountLabel: '割引',
+      summaryLabel: '内容',
+      howToUseLabel: '利用方法',
+      validityLabel: '有効期間',
+      locationsLabel: '対象エリア',
+      sourceLabel: '参照元',
       codeLabel: 'クーポンコード',
-      codeMissing: 'コード不要の提携リンクです。',
+      codeMissing: '提携リンク経由で適用されます（コード不要）。',
       copyCode: 'コードをコピー',
       copied: 'コピー済み',
-      openLink: 'オファーを開く',
-      sourceNote: 'リンクは Olachill のブランド導線 (/go/...) 経由で開きます。',
+      openLink: '今すぐ購入',
+      close: '閉じる',
+      noCoupon: 'このカテゴリにクーポンがありません。',
+      qrTitle: 'OlachillブランドQR',
+      qrHint: 'QRをスキャン、または「今すぐ購入」で隠しリンクを開きます。',
+      categoryLabel: 'カテゴリ',
+      sourceNote: 'リンクは olachill.com/go/... 経由で開き、提携元URLを隠します。',
       noteLabel: 'メモ',
       copyPrompt: '自動コピーできませんでした。手動でコピーしてください:'
     }
@@ -2234,9 +2281,22 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
 
   const t = copyByLang[language];
   const [coupons, setCoupons] = useState<AffiliateCoupon[]>([
-    { id: 'klook', partner: 'Klook', code: '', slug: 'klook' },
-    { id: 'kkday', partner: 'KKday', code: '', slug: 'kkday' }
+    {
+      id: 'taxfree-coupon-home',
+      partner: 'TaxFreeShops',
+      title: 'Tax-free shopping coupons',
+      category: 'shopping',
+      discount: language === 'ja' ? '店舗ごとに異なる割引' : language === 'en' ? 'Store-dependent discount' : 'Ưu đãi theo từng cửa hàng',
+      summary: language === 'ja'
+        ? '日本全国の免税店クーポン一覧。'
+        : language === 'en'
+          ? 'Tax-free coupon list across Japan.'
+          : 'Danh sách coupon miễn thuế trên toàn Nhật Bản.',
+      slug: 'taxfree-coupon-home'
+    }
   ]);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [selectedCoupon, setSelectedCoupon] = useState<AffiliateCoupon | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -2249,8 +2309,16 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
         const normalized = raw
           .map((item: any) => ({
             id: String(item?.id || '').trim().toLowerCase(),
-            partner: String(item?.partner || '').trim(),
+            partner: String(item?.partner || item?.name || '').trim(),
+            title: typeof item?.title === 'string' ? item.title.trim() : '',
+            category: typeof item?.category === 'string' ? item.category.trim().toLowerCase() : '',
             code: String(item?.code || '').trim(),
+            discount: typeof item?.discount === 'string' ? item.discount.trim() : '',
+            summary: typeof item?.summary === 'string' ? item.summary.trim() : '',
+            howToUse: typeof item?.howToUse === 'string' ? item.howToUse.trim() : '',
+            validity: typeof item?.validity === 'string' ? item.validity.trim() : '',
+            locations: typeof item?.locations === 'string' ? item.locations.trim() : '',
+            source: typeof item?.source === 'string' ? item.source.trim() : '',
             slug: String(item?.slug || item?.id || '').trim().toLowerCase(),
             note: typeof item?.note === 'string' ? item.note.trim() : undefined
           }))
@@ -2273,6 +2341,11 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
     window.open(`/go/${slug}`, '_blank', 'noopener,noreferrer');
   };
 
+  const getBrandedCouponLink = (slug: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+    return `${origin}/go/${slug}`;
+  };
+
   const copyCouponCode = async (item: AffiliateCoupon) => {
     if (!item.code) return;
     try {
@@ -2284,76 +2357,265 @@ const AffiliateCouponTool = ({ onClose, language }: { onClose: () => void; langu
     }
   };
 
+  const categoryLabelByLang: Record<string, Record<Language, string>> = {
+    all: { vi: 'Tất cả', en: 'All', ja: 'すべて' },
+    shopping: { vi: 'Mua sắm', en: 'Shopping', ja: '買い物' },
+    drugstore: { vi: 'Drugstore', en: 'Drugstore', ja: 'ドラッグストア' },
+    electronics: { vi: 'Điện tử', en: 'Electronics', ja: '家電' },
+    department: { vi: 'Bách hóa', en: 'Department Store', ja: '百貨店' },
+    sports: { vi: 'Thể thao', en: 'Sports', ja: 'スポーツ' },
+    transport: { vi: 'Di chuyển', en: 'Transport', ja: '交通' },
+    sim: { vi: 'SIM/eSIM', en: 'SIM/eSIM', ja: 'SIM/eSIM' },
+    travel: { vi: 'Du lịch', en: 'Travel', ja: '旅行' },
+    other: { vi: 'Khác', en: 'Other', ja: 'その他' }
+  };
+
+  const getCategoryLabel = (category: string | undefined): string => {
+    const key = (category || 'other').toLowerCase();
+    return categoryLabelByLang[key]?.[language] || key;
+  };
+
+  const categoryList = Array.from(
+    new Set(coupons.map((item) => (item.category || 'other').toLowerCase()))
+  );
+  categoryList.sort((a, b) => getCategoryLabel(a).localeCompare(getCategoryLabel(b)));
+  const categoryOptions = ['all', ...categoryList];
+
+  const filteredCoupons = coupons.filter((item) => {
+    if (activeCategory === 'all') return true;
+    return (item.category || 'other').toLowerCase() === activeCategory;
+  });
+
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-3xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
-    >
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
-            <Ticket size={20} />
+    <>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-stone-900 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-stone-100 dark:border-stone-800 shadow-2xl max-w-5xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+              <Ticket size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-serif dark:text-white">{t.title}</h3>
+              <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.subtitle}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-serif dark:text-white">{t.title}</h3>
-            <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">{t.subtitle}</p>
+          <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
+            <X size={20} className="text-stone-400" />
+          </button>
+        </div>
+
+        <div className="mb-5">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-2">{t.categoryLabel}</p>
+          <div className="flex flex-wrap gap-2">
+            {categoryOptions.map((category) => {
+              const isActive = activeCategory === category;
+              const label = category === 'all' ? t.allCategories : getCategoryLabel(category);
+              return (
+                <button
+                  key={category}
+                  onClick={() => setActiveCategory(category)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors">
-          <X size={20} className="text-stone-400" />
-        </button>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {coupons.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-800/50 p-5"
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="text-xs uppercase tracking-widest font-bold text-stone-400">{item.partner}</p>
-                <h4 className="text-2xl font-black text-stone-900 dark:text-white mt-1">{item.partner}</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredCoupons.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50/60 dark:bg-stone-800/50 p-4"
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{item.partner}</p>
+                  <h4 className="text-lg font-black text-stone-900 dark:text-white mt-1 leading-snug">
+                    {item.title || item.partner}
+                  </h4>
+                </div>
+                <span className="shrink-0 px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  {getCategoryLabel(item.category)}
+                </span>
               </div>
-              <button
-                onClick={() => openAffiliate(item.slug)}
-                className="shrink-0 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-1"
-              >
-                {t.openLink}
-                <ExternalLink size={14} />
-              </button>
-            </div>
 
-            <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-2">{t.codeLabel}</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700 px-3 py-2.5 bg-white dark:bg-stone-900">
-                <p className="text-sm font-mono font-bold text-emerald-700 dark:text-emerald-300 break-all">
-                  {item.code || t.codeMissing}
+              {item.discount ? (
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-1">
+                  {t.discountLabel}: {item.discount}
                 </p>
-              </div>
+              ) : null}
+
+              {item.summary ? (
+                <p className="text-xs text-stone-600 dark:text-stone-300 min-h-[40px] mb-3">
+                  {item.summary}
+                </p>
+              ) : (
+                <p className="text-xs text-stone-500 dark:text-stone-400 min-h-[40px] mb-3">
+                  {t.summaryLabel}: {item.partner}
+                </p>
+              )}
+
               <button
-                onClick={() => copyCouponCode(item)}
-                disabled={!item.code}
-                className="shrink-0 px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-600 dark:text-stone-300 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                onClick={() => setSelectedCoupon(item)}
+                className="w-full px-3 py-2.5 rounded-xl bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 text-sm font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
               >
-                {copiedId === item.id ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                {copiedId === item.id ? t.copied : t.copyCode}
+                {t.detailAndQr}
               </button>
             </div>
+          ))}
+        </div>
 
-            {item.note ? (
-              <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
-                <span className="font-bold">{t.noteLabel}: </span>
-                {item.note}
+        {filteredCoupons.length === 0 ? (
+          <div className="mt-5 text-sm text-stone-500 dark:text-stone-400">{t.noCoupon}</div>
+        ) : null}
+
+        <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-5">{t.sourceNote}</p>
+      </motion.div>
+
+      <AnimatePresence>
+        {selectedCoupon ? (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedCoupon(null)}
+              className="absolute inset-0 bg-stone-900/45 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl border border-stone-100 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 sm:p-6 shadow-2xl"
+            >
+              <button
+                onClick={() => setSelectedCoupon(null)}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                <X size={18} className="text-stone-400" />
+              </button>
+
+              <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400 mb-1">{selectedCoupon.partner}</p>
+              <h4 className="text-2xl font-black text-stone-900 dark:text-white leading-snug mb-1">{selectedCoupon.title || selectedCoupon.partner}</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">
+                {getCategoryLabel(selectedCoupon.category)}
               </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
 
-      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-5">{t.sourceNote}</p>
-    </motion.div>
+              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5">
+                <div>
+                  <p className="text-xs font-semibold text-stone-700 dark:text-stone-200 mb-2">{t.qrTitle}</p>
+                  <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 p-3">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(getBrandedCouponLink(selectedCoupon.slug))}`}
+                      alt={`${selectedCoupon.title || selectedCoupon.partner} QR`}
+                      className="w-full rounded-xl"
+                    />
+                  </div>
+                  <p className="text-[11px] text-stone-400 mt-2">{t.qrHint}</p>
+                </div>
+
+                <div className="space-y-3">
+                  {selectedCoupon.discount ? (
+                    <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-900/15 px-3 py-2">
+                      <p className="text-xs uppercase tracking-widest font-bold text-emerald-700 dark:text-emerald-300">{t.discountLabel}</p>
+                      <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">{selectedCoupon.discount}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.summary ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{t.summaryLabel}</p>
+                      <p className="text-sm text-stone-700 dark:text-stone-200">{selectedCoupon.summary}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.howToUse ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{t.howToUseLabel}</p>
+                      <p className="text-sm text-stone-700 dark:text-stone-200">{selectedCoupon.howToUse}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.validity ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{t.validityLabel}</p>
+                      <p className="text-sm text-stone-700 dark:text-stone-200">{selectedCoupon.validity}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.locations ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{t.locationsLabel}</p>
+                      <p className="text-sm text-stone-700 dark:text-stone-200">{selectedCoupon.locations}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.code ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-1">{t.codeLabel}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700 px-3 py-2 bg-white dark:bg-stone-950">
+                          <p className="text-sm font-mono font-bold text-emerald-700 dark:text-emerald-300 break-all">
+                            {selectedCoupon.code}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyCouponCode(selectedCoupon)}
+                          className="shrink-0 px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-600 dark:text-stone-300 hover:border-emerald-500/50 flex items-center gap-1.5"
+                        >
+                          {copiedId === selectedCoupon.id ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                          {copiedId === selectedCoupon.id ? t.copied : t.copyCode}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.source ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">{t.sourceLabel}</p>
+                      <p className="text-sm text-stone-700 dark:text-stone-200">{selectedCoupon.source}</p>
+                    </div>
+                  ) : null}
+
+                  {selectedCoupon.note ? (
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      <span className="font-bold">{t.noteLabel}: </span>
+                      {selectedCoupon.note}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setSelectedCoupon(null)}
+                  className="px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-sm font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
+                >
+                  {t.close}
+                </button>
+                <button
+                  onClick={() => openAffiliate(selectedCoupon.slug)}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
+                >
+                  {t.openLink}
+                  <ExternalLink size={14} />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 };
 
