@@ -4208,7 +4208,6 @@ const AppContent = ({ language, setLanguage }: { language: Language, setLanguage
 
   const quickToolButtons: Array<{ key: string; icon: string; label: string; onClick: () => void }> = [
     { key: 'train', icon: '🚄', label: quickToolLabels.train, onClick: () => openUtilityPanel('train') },
-    { key: 'tickets', icon: '🎟️', label: quickToolLabels.tickets, onClick: () => openUtilityPanel('tickets', 'tickets') },
     { key: 'esim', icon: '📶', label: quickToolLabels.esim, onClick: () => openUtilityPanel('esim') },
     { key: 'parks', icon: '🎢', label: quickToolLabels.parks, onClick: () => openUtilityPanel('tickets', 'parks') },
     { key: 'privatecar', icon: '🚘', label: quickToolLabels.privatecar, onClick: () => openUtilityPanel('tickets', 'privatecar') },
